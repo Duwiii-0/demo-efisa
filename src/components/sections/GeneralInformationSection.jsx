@@ -1,0 +1,130 @@
+import { Field, Input, SectionCard, Select, Textarea } from '../ui.jsx'
+import { formatDateTime } from '../../lib/format.js'
+
+export default function GeneralInformationSection({ form, errors, reference, onChange, readOnly = false }) {
+  const { general } = form
+  const disabled = readOnly
+  const set = (field) => (event) => onChange({ ...general, [field]: event.target.value })
+  const setNumber = (field) => (event) => onChange({ ...general, [field]: event.target.value === '' ? '' : Number(event.target.value) })
+
+  const procurementDm = reference.users.filter((user) => user.role === 'procurement' && user.division === 'DM')
+  const procurementFt = reference.users.filter((user) => user.role === 'procurement' && user.division === 'FT')
+
+  return (
+    <SectionCard step="1" title="FSA General Information" description="Informasi dasar audit first sample inspection part.">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+        <Field label="FSA Number" hint="Auto generated, tidak bisa diubah. Format FSA-yyyymmdd-xx, xx increment dalam 1 hari">
+          <Input value={general.fsaNumber || 'Akan di-generate otomatis...'} readOnly disabled />
+        </Field>
+
+        <Field label="PPAP Level" required error={errors.ppapLevel} hint="Level 1 sampai 5">
+          <Select value={general.ppapLevel} onChange={set('ppapLevel')} invalid={Boolean(errors.ppapLevel)} disabled={disabled}>
+            <option value="">-- Pilih PPAP Level --</option>
+            {reference.ppapLevels.map((level) => (
+              <option key={level} value={level}>
+                Level {level}
+              </option>
+            ))}
+          </Select>
+        </Field>
+
+        <Field label="Category" required error={errors.category}>
+          <Select value={general.categoryId} onChange={set('categoryId')} invalid={Boolean(errors.category)} disabled={disabled}>
+            <option value="">-- Pilih Category --</option>
+            {reference.partCategories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
+
+        <Field label="Reason of FSA" required error={errors.reasonOfFsa}>
+          <Select value={general.reasonId} onChange={set('reasonId')} invalid={Boolean(errors.reasonOfFsa)} disabled={disabled}>
+            <option value="">-- Pilih Reason --</option>
+            {reference.reasons.map((reason) => (
+              <option key={reason.id} value={reason.id}>
+                {reason.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
+
+        <Field label="Part Number" required error={errors.partNumber} hint="* multi part separated by comma (,). Contoh: PART01950185,PART02774310">
+          <Textarea
+            rows={3}
+            value={general.partNumber}
+            onChange={(event) => onChange({ ...general, partNumber: event.target.value.toUpperCase() })}
+            placeholder="PART01950185,PART02774310"
+            invalid={Boolean(errors.partNumber)}
+            disabled={disabled}
+          />
+        </Field>
+
+        <Field label="Material Description" required error={errors.materialDescription} hint="* multi part separated by comma (,). Contoh: Bracket holder, Cable shield">
+          <Textarea
+            rows={3}
+            value={general.materialDescription}
+            onChange={set('materialDescription')}
+            placeholder="Bracket holder, Cable shield"
+            invalid={Boolean(errors.materialDescription)}
+            disabled={disabled}
+          />
+        </Field>
+
+        <Field label="Supplier Name" required error={errors.supplierName}>
+          <Select value={general.supplierId} onChange={set('supplierId')} invalid={Boolean(errors.supplierName)} disabled={disabled}>
+            <option value="">-- Pilih Supplier --</option>
+            {reference.suppliers.map((supplier) => (
+              <option key={supplier.id} value={supplier.id}>
+                {supplier.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
+
+        <Field label="FSA Date of Creation" hint="Diisi otomatis saat FSA dibuat">
+          <Input value={formatDateTime(general.createdAt)} readOnly disabled />
+        </Field>
+
+        <Field label="Drawing Revision" required error={errors.drawingRevision} hint="Mulai dari 0">
+          <Input type="number" min="0" step="1" value={general.drawingRevision} onChange={setNumber('drawingRevision')} placeholder="0" invalid={Boolean(errors.drawingRevision)} disabled={disabled} />
+        </Field>
+
+        <Field label="Sourcing Volume" error={errors.sourcingVolume} hint="Jumlah volume sourcing (opsional)">
+          <Input type="number" min="0" step="1" value={general.sourcingVolume ?? ''} onChange={setNumber('sourcingVolume')} placeholder="0" invalid={Boolean(errors.sourcingVolume)} disabled={disabled} />
+        </Field>
+
+        <Field label="Date of Sample Submission" required error={errors.dateOfSampleSubmission}>
+          <Input type="date" value={general.dateOfSampleSubmission} onChange={set('dateOfSampleSubmission')} invalid={Boolean(errors.dateOfSampleSubmission)} disabled={disabled} />
+        </Field>
+
+        <Field label="Sample Quantity" required error={errors.sampleQuantity} hint="Jumlah sample yang dikirim">
+          <Input type="number" min="1" step="1" value={general.sampleQuantity} onChange={setNumber('sampleQuantity')} placeholder="5" invalid={Boolean(errors.sampleQuantity)} disabled={disabled} />
+        </Field>
+
+        <Field label="Approval DM" required error={errors.verifierDm}>
+          <Select value={general.verifierDmId} onChange={set('verifierDmId')} invalid={Boolean(errors.verifierDm)} disabled={disabled}>
+            <option value="">-- Pilih Approval DM --</option>
+            {procurementDm.map((user) => (
+              <option key={user.id} value={user.id}>
+                {user.name} ({user.email})
+              </option>
+            ))}
+          </Select>
+        </Field>
+
+        <Field label="Approval FT" required error={errors.verifierFt}>
+          <Select value={general.verifierFtId} onChange={set('verifierFtId')} invalid={Boolean(errors.verifierFt)} disabled={disabled}>
+            <option value="">-- Pilih Approval FT --</option>
+            {procurementFt.map((user) => (
+              <option key={user.id} value={user.id}>
+                {user.name} ({user.email})
+              </option>
+            ))}
+          </Select>
+        </Field>
+      </div>
+    </SectionCard>
+  )
+}
