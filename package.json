@@ -7,9 +7,11 @@
     "dev": "concurrently -k -n server,client -c blue,green \"node --watch server.js\" \"vite\"",
     "build": "vite build",
     "start": "node server.js",
-    "db:reset": "node --input-type=module -e \"import('./server/db.js').then((m) => { m.resetDb(); console.log('Database EFISA direset ke data awal') })\""
+    "db:reset": "node --input-type=module -e \"import('./server/db.js').then((m) => { m.resetDb(); console.log('Database EFISA direset ke data awal') })\"",
+    "db:seed:supabase": "node supabase/seed.mjs"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.117.2",
     "dotenv": "^18.0.3",
     "express": "^5.2.1",
     "react": "^19.3.0",

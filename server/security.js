@@ -1,4 +1,5 @@
 import { createHash, randomUUID, timingSafeEqual } from 'node:crypto'
+import { getSupabaseAdmin, isSupabaseEnabled } from './supabase.js'
 
 const SESSIONS = new Map()
 
@@ -38,4 +39,32 @@ export function resolveSessionUser(token) {
 
 export function destroySession(token) {
   SESSIONS.delete(token)
+}
+
+// Versi async: pakai tabel public.sessions saat Supabase aktif
+// (wajib untuk Vercel serverless karena Map in-memory hilang antar request).
+export async function createSessionAsync(userId) {
+  if (!isSupabaseEnabled) return createSession(userId)
+  const token = randomUUID()
+  const { error } = await getSupabaseAdmin()
+    .from('sessions')
+    .insert({ token, user_id: userId })
+  if (error) throw error
+  return token
+}
+
+export async function resolveSessionUserAsync(token) {
+  if (!token) return null
+  if (!isSupabaseEnabled) return resolveSessionUser(token)
+  const { data } = await getSupabaseAdmin()
+    .from('sessions')
+    .select('user_id')
+    .eq('token', token)
+    .single()
+  return data?.user_id ?? null
+}
+
+export async function destroySessionAsync(token) {
+  if (!isSupabaseEnabled) return destroySession(token)
+  await getSupabaseAdmin().from('sessions').delete().eq('token', token)
 }

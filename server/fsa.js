@@ -8,6 +8,13 @@ import {
   SUPPLIERS,
 } from './seed.js'
 import { getDb, saveDb } from './db.js'
+import {
+  buildNextNumber as buildNextNumberStore,
+  getFsaById,
+  insertFsa as insertFsaRow,
+  saveFsa as saveFsaRow,
+  userExistsById,
+} from './store.js'
 import { MAX_FILES, storeUpload } from './uploads.js'
 
 const PART_NUMBER_PATTERN = /^PART\d{8}$/
@@ -150,28 +157,31 @@ function pickId(value, allowed, field, errors) {
   return value
 }
 
-function userExists(userId) {
+async function userExists(userId) {
   if (!userId) {
     return false
   }
-  return getDb().users.some((user) => user.id === userId)
+  return userExistsById(userId)
 }
 
-function normalizeDocuments(raw, fsaId, errors) {
+async function normalizeDocuments(raw, fsaId, errors) {
   const rawPpap = Array.isArray(raw?.ppap) ? raw.ppap : []
   if (rawPpap.length > MAX_FILES) {
     errors['ppapDocuments'] = `Maksimal ${MAX_FILES} file PPAP`
   }
 
   const appearance = raw?.appearance
-    ? storeUpload({ fsaId, ...raw.appearance })
+    ? await storeUpload({ fsaId, ...raw.appearance })
     : null
 
   if (appearance && !appearance.mime.startsWith('image/')) {
     errors['appearance'] = 'File appearance harus berupa gambar'
   }
 
-  const ppap = rawPpap.slice(0, MAX_FILES).map((file) => storeUpload({ fsaId, ...file }))
+  const ppap = []
+  for (const file of rawPpap.slice(0, MAX_FILES)) {
+    ppap.push(await storeUpload({ fsaId, ...file }))
+  }
 
   return { appearance, ppap }
 }
@@ -193,14 +203,14 @@ function normalizeChecklist(raw, errors) {
   }
 }
 
-function normalizeApprovals(raw, errors) {
+async function normalizeApprovals(raw, errors) {
   const source = raw ?? {}
   const approvals = {}
 
   for (const fn of APPROVAL_FUNCTIONS) {
     const input = source[fn.key] ?? {}
     const decision = DECISION_IDS.has(input.decision) ? input.decision : 'pending'
-    const approverId = userExists(input.approverId) ? input.approverId : null
+    const approverId = (await userExists(input.approverId)) ? input.approverId : null
 
     if (input.approverId && !approverId) {
       errors[`approvals.${fn.key}.approverId`] = `Approver ${fn.key} tidak ditemukan`
@@ -252,9 +262,8 @@ export function deriveStatus(approvals) {
   return 'waiting_approval_spr'
 }
 
-export function updateFsa(fsaId, payload, actor) {
-  const db = getDb()
-  const fsa = db.fsas.find((item) => item.id === fsaId)
+export async function updateFsa(fsaId, payload, actor) {
+  const fsa = await getFsaById(fsaId)
   if (!fsa) return null
 
   if (actor.role !== 'procurement') {
@@ -330,10 +339,10 @@ export function updateFsa(fsaId, payload, actor) {
     errors.sampleQuantity = 'Sample quantity harus bilangan bulat mulai dari 0'
   }
 
-  if (!userExists(body.verifierDmId)) {
+  if (!(await userExists(body.verifierDmId))) {
     errors.verifierDm = 'Verifikator DM wajib dipilih'
   }
-  if (!userExists(body.verifierFtId)) {
+  if (!(await userExists(body.verifierFtId))) {
     errors.verifierFt = 'Verifikator FT wajib dipilih'
   }
 
@@ -346,7 +355,7 @@ export function updateFsa(fsaId, payload, actor) {
     // Appearance: hanya replace jika ada file baru (bukan null)
     if (rawAppearance !== null && rawAppearance !== undefined) {
       try {
-        const newAppearance = storeUpload({ fsaId, ...rawAppearance })
+        const newAppearance = await storeUpload({ fsaId, ...rawAppearance })
         if (!newAppearance.mime.startsWith('image/')) {
           errors['appearance'] = 'File appearance harus berupa gambar'
         } else {
@@ -370,7 +379,7 @@ export function updateFsa(fsaId, payload, actor) {
           if (existing) resolved.push(existing)
         } else if (f.dataUrl) {
           // File baru – simpan
-          resolved.push(storeUpload({ fsaId, ...f }))
+          resolved.push(await storeUpload({ fsaId, ...f }))
         }
       }
       if (resolved.length > MAX_FILES) {
@@ -388,7 +397,7 @@ export function updateFsa(fsaId, payload, actor) {
   const resetApprovals = {}
   for (const fn of APPROVAL_FUNCTIONS) {
     const input = approvalInput[fn.key] ?? {}
-    const approverId = userExists(input.approverId)
+    const approverId = (await userExists(input.approverId))
       ? input.approverId
       : (fsa.approvals[fn.key]?.approverId ?? null)
     resetApprovals[fn.key] = {
@@ -438,35 +447,20 @@ export function updateFsa(fsaId, payload, actor) {
     note: `FSA diperbarui setelah rework dan dikembalikan ke Waiting Approval SPR`,
   })
 
-  saveDb()
-  return fsa
+  return saveFsaRow(fsa)
 }
 
-export function buildNextNumber(date = new Date()) {
-  const stamp = [
-    date.getFullYear(),
-    String(date.getMonth() + 1).padStart(2, '0'),
-    String(date.getDate()).padStart(2, '0'),
-  ].join('')
-  const prefix = `FSA-${stamp}`
-
-  const used = getDb()
-    .fsas.filter((fsa) => fsa.fsaNumber?.startsWith(prefix))
-    .map((fsa) => Number.parseInt(fsa.fsaNumber.split('-')[2], 10))
-    .filter((value) => Number.isFinite(value))
-
-  const next = (used.length ? Math.max(...used) : 0) + 1
-
-  return `${prefix}-${String(next).padStart(2, '0')}`
+export async function buildNextNumber(date = new Date()) {
+  return buildNextNumberStore(date)
 }
 
-export function createFsa(payload, actor) {
+export async function createFsa(payload, actor) {
   const errors = {}
   const body = payload?.general ?? {}
 
   // FSA number selalu di-generate server: FSA-yyyymmdd-xx,
   // xx increment mulai 01 dalam 1 hari yang sama.
-  const fsaNumber = buildNextNumber()
+  const fsaNumber = await buildNextNumberStore()
 
   if (!PPAP_LEVELS.includes(Number(body.ppapLevel))) {
     errors.ppapLevel = 'PPAP level harus 1 sampai 5'
@@ -527,20 +521,20 @@ export function createFsa(payload, actor) {
     errors.sampleQuantity = 'Sample quantity harus bilangan bulat mulai dari 0'
   }
 
-  if (!userExists(body.verifierDmId)) {
+  if (!(await userExists(body.verifierDmId))) {
     errors.verifierDm = 'Verifikator DM wajib dipilih'
   }
-  if (!userExists(body.verifierFtId)) {
+  if (!(await userExists(body.verifierFtId))) {
     errors.verifierFt = 'Verifikator FT wajib dipilih'
   }
 
   const fsaId = randomUUID()
   const checklist = normalizeChecklist(payload?.checklist, errors)
-  const approvals = normalizeApprovals(payload?.approvals, errors)
+  const approvals = await normalizeApprovals(payload?.approvals, errors)
 
   let documents = { appearance: null, ppap: [] }
   try {
-    documents = normalizeDocuments(payload?.documents, fsaId, errors)
+    documents = await normalizeDocuments(payload?.documents, fsaId, errors)
   } catch (error) {
     errors.documents = error.message
   }
@@ -584,13 +578,11 @@ export function createFsa(payload, actor) {
     history: [{ at: now, byId: actor.id, action: 'created', note: `FSA ${fsaNumber} dibuat` }],
   }
 
-  getDb().fsas.push(fsa)
-  saveDb()
-  return fsa
+  return insertFsaRow(fsa)
 }
 
-export function updateDecision(fsaId, fnKey, payload, actor) {
-  const fsa = getDb().fsas.find((item) => item.id === fsaId)
+export async function updateDecision(fsaId, fnKey, payload, actor) {
+  const fsa = await getFsaById(fsaId)
   if (!fsa) {
     return null
   }
@@ -628,7 +620,7 @@ export function updateDecision(fsaId, fnKey, payload, actor) {
   }
 
   // Nama assigned dipertahankan walau decision pending, agar detail selalu tampil nama.
-  const approverId = userExists(payload?.approverId)
+  const approverId = (await userExists(payload?.approverId))
     ? payload.approverId
     : (fsa.approvals[fnKey]?.approverId ?? fn.approverId ?? actor.id)
 
@@ -659,6 +651,5 @@ export function updateDecision(fsaId, fnKey, payload, actor) {
     note: forceCancel ? `${fn.label}: rejected (FSA canceled)` : `${fn.label}: ${decision}`,
   })
 
-  saveDb()
-  return fsa
+  return saveFsaRow(fsa)
 }
