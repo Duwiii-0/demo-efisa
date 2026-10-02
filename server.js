@@ -3,7 +3,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import express from 'express'
 import { getDb } from './server/db.js'
-import { buildNextNumber, createFsa, updateDecision, ValidationError } from './server/fsa.js'
+import { buildNextNumber, createFsa, updateDecision, updateFsa, ValidationError } from './server/fsa.js'
 import {
   APPROVAL_DECISIONS,
   APPROVAL_FUNCTIONS,
@@ -154,6 +154,27 @@ app.get('/api/fsa/:id', requireAuth, (req, res) => {
   res.json({ fsa })
 })
 
+app.patch('/api/fsa/:id', requireAuth, requireRole('procurement'), (req, res) => {
+  try {
+    const fsa = updateFsa(req.params.id, req.body, req.user)
+    if (!fsa) {
+      res.status(404).json({ error: 'FSA tidak ditemukan' })
+      return
+    }
+    res.json({ fsa })
+  } catch (error) {
+    if (error instanceof ValidationError) {
+      res.status(422).json({ error: error.message, errors: error.errors })
+      return
+    }
+    if (error.status) {
+      res.status(error.status).json({ error: error.message })
+      return
+    }
+    throw error
+  }
+})
+
 app.patch('/api/fsa/:id/decision/:key', requireAuth, (req, res) => {
   try {
     const fsa = updateDecision(req.params.id, req.params.key, req.body, req.user)
@@ -164,7 +185,7 @@ app.patch('/api/fsa/:id/decision/:key', requireAuth, (req, res) => {
     res.json({ fsa })
   } catch (error) {
     if (error.status) {
-      res.status(error.status).json({ error: error.message })
+      res.status(error.status).json({ error: error.message, errors: error.errors ?? null })
       return
     }
     throw error

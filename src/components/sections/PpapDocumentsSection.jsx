@@ -52,7 +52,6 @@ function FileRow({ file, onRemove }) {
 export default function PpapDocumentsSection({ form, errors, onChange }) {
   const { documents } = form
   const [localError, setLocalError] = useState('')
-  const [preview, setPreview] = useState(null)
 
   const setDocuments = (next) => onChange({ ...documents, ...next })
 
@@ -72,7 +71,6 @@ export default function PpapDocumentsSection({ form, errors, onChange }) {
 
     const payload = await readFileAsDataUrl(file)
     setDocuments({ appearance: { ...payload, size: file.size, localPreview: URL.createObjectURL(file) } })
-    setPreview(URL.createObjectURL(file))
   }
 
   async function handlePpap(files) {
@@ -101,25 +99,34 @@ export default function PpapDocumentsSection({ form, errors, onChange }) {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Field label="Appearance" required error={errors.appearance} hint="Upload 1 foto part (maks 10 MB)">
           <div className="space-y-3">
+            <UploadButton
+              accept="image/*"
+              label={documents.appearance ? 'Ganti foto' : 'Upload foto'}
+              onPick={handleAppearance}
+            />
             {documents.appearance ? (
-              <div className="flex items-start gap-4">
-                <img
-                  src={documents.appearance.localPreview ?? preview ?? ''}
-                  alt="Preview appearance"
-                  className="h-28 w-28 rounded-lg border border-slate-200 object-cover"
-                />
-                <div className="min-w-0 flex-1">
-                  <FileRow file={documents.appearance} onRemove={() => setDocuments({ appearance: null })} />
-                  <div className="mt-3">
-                    <UploadButton accept="image/*" label="Ganti foto" onPick={handleAppearance} />
-                  </div>
-                </div>
-              </div>
+              <ul className="space-y-2">
+                {documents.appearance._existing ? (
+                  // File sudah tersimpan di server – tampilkan placeholder
+                  <li className="overflow-hidden rounded-lg border border-slate-200 bg-slate-100 px-4 py-6 text-center text-sm text-slate-500">
+                    📷 {documents.appearance.fileName}
+                    <span className="ml-2 text-xs text-slate-400">(file tersimpan di server)</span>
+                  </li>
+                ) : (
+                  <li className="overflow-hidden rounded-lg border border-slate-200">
+                    <img
+                      src={documents.appearance.localPreview ?? documents.appearance.dataUrl ?? ''}
+                      alt="Preview appearance"
+                      className="h-40 w-full object-cover"
+                    />
+                  </li>
+                )}
+                <FileRow file={documents.appearance} onRemove={() => setDocuments({ appearance: null })} />
+              </ul>
             ) : (
-              <div className="flex flex-col items-start gap-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-6">
-                <p className="text-sm text-slate-500">Belum ada foto appearance yang diunggah.</p>
-                <UploadButton accept="image/*" label="Upload foto" onPick={handleAppearance} />
-              </div>
+              <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-4 text-sm text-slate-500">
+                Belum ada foto appearance yang diunggah.
+              </p>
             )}
           </div>
         </Field>

@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
-import { api, downloadFile, getToken } from '../lib/api.js'
-import { Alert, Button, Card, DetailRow, SectionCard, Spinner } from './ui.jsx'
+import { useEffect, useMemo, useState } from 'react'
+import { api, downloadFile } from '../lib/api.js'
+import { Alert, Button, Card, DetailRow, SectionCard, Spinner, Toast } from './ui.jsx'
 import GeneralInformationSection from './sections/GeneralInformationSection.jsx'
 import CrossFunctionalApprovalSection from './sections/CrossFunctionalApprovalSection.jsx'
+import { assignedActionableKeys } from '../lib/fsaForm.js'
 import { badgeClass, findName, formatBytes } from '../lib/format.js'
 
 const CHECKLIST_LABELS = {
@@ -28,38 +29,17 @@ function FileLink({ file, onClick }) {
   )
 }
 
-function AuthImage({ file, alt }) {
-  const [src, setSrc] = useState(null)
-
-  useEffect(() => {
-    let active = true
-    let objectUrl = null
-
-    fetch(api.downloadUrl(file.storedName), { headers: { Authorization: `Bearer ${getToken()}` } })
-      .then((response) => (response.ok ? response.blob() : Promise.reject(new Error('Gagal memuat gambar'))))
-      .then((blob) => {
-        if (!active) return
-        objectUrl = URL.createObjectURL(blob)
-        setSrc(objectUrl)
-      })
-      .catch(() => active && setSrc(null))
-
-    return () => {
-      active = false
-      if (objectUrl) URL.revokeObjectURL(objectUrl)
-    }
-  }, [file.storedName])
-
-  if (!src) {
-    return <div className="h-48 w-full animate-pulse rounded-lg bg-slate-100" />
-  }
-
-  return <img src={src} alt={alt} className="h-48 w-full object-cover" />
-}
-
-export default function FsaDetailPage({ id, reference, onBack }) {
+export default function FsaDetailPage({ id, reference, onBack, onEdit }) {
   const [fsa, setFsa] = useState(null)
   const [error, setError] = useState('')
+  const [toast, setToast] = useState(null)
+  const [busyKey, setBusyKey] = useState(null)
+
+  useEffect(() => {
+    if (!toast) return
+    const timer = setTimeout(() => setToast(null), 4000)
+    return () => clearTimeout(timer)
+  }, [toast])
 
   useEffect(() => {
     let active = true
@@ -76,11 +56,37 @@ export default function FsaDetailPage({ id, reference, onBack }) {
     }
   }, [id])
 
+  const myActionable = useMemo(
+    () => (fsa ? assignedActionableKeys(fsa, reference.me?.id) : []),
+    [fsa, reference],
+  )
+
   async function handleDownload(file) {
     try {
       await downloadFile(file)
     } catch (err) {
       setError(err.message)
+    }
+  }
+
+  async function handleDecide(key, decision, remark, canceled = false) {
+    setBusyKey(key)
+    setToast(null)
+    try {
+      const result = await api.updateDecision(id, key, { decision, remark, ...(canceled ? { canceled: true } : {}) })
+      setFsa(result.fsa)
+      setToast({
+        tone: 'success',
+        message: canceled
+          ? 'FSA dibatalkan (canceled).'
+          : decision === 'approved'
+            ? 'Keputusan approved berhasil disimpan.'
+            : 'FSA dikembalikan untuk rework.',
+      })
+    } catch (err) {
+      setToast({ tone: 'error', message: err.message })
+    } finally {
+      setBusyKey(null)
     }
   }
 
@@ -105,7 +111,14 @@ export default function FsaDetailPage({ id, reference, onBack }) {
             </p>
           </div>
         </div>
-        <span className={badgeClass(fsa.approvalStatus)}>{findName(reference.fsaStatuses, fsa.approvalStatus)}</span>
+        <div className="flex items-center gap-3">
+          {onEdit && fsa.approvalStatus === 'rework_required' && (fsa.approvals?.procurement?.approverId ? fsa.approvals?.procurement?.approverId === reference.me?.id : reference.me?.role === 'procurement') ? (
+            <Button variant="warning" onClick={() => onEdit(fsa)}>
+              ✏️ Edit untuk Rework
+            </Button>
+          ) : null}
+          <span className={badgeClass(fsa.approvalStatus)}>{findName(reference.fsaStatuses, fsa.approvalStatus)}</span>
+        </div>
       </header>
 
       {error ? <Alert>{error}</Alert> : null}
@@ -121,10 +134,13 @@ export default function FsaDetailPage({ id, reference, onBack }) {
             sourcingVolume: fsa.sourcingVolume ?? '',
             supplierId: fsa.supplierId,
             categoryId: fsa.categoryId,
+            categoryOther: fsa.categoryOther ?? '',
             reasonId: fsa.reasonId,
+            reasonOther: fsa.reasonOther ?? '',
             dateOfSampleSubmission: fsa.dateOfSampleSubmission,
             sampleQuantity: fsa.sampleQuantity,
             createdAt: fsa.createdAt,
+            completedAt: fsa.completedAt,
             verifierDmId: fsa.verifierDmId,
             verifierFtId: fsa.verifierFtId,
           },
@@ -138,12 +154,9 @@ export default function FsaDetailPage({ id, reference, onBack }) {
       <SectionCard step="2" title="PPAP Documents">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div>
-            <p className="mb-2 text-sm font-medium text-slate-700">Appearance</p>
+            <p className="mb-2 text-sm font-medium text-slate-700">Appearance ({fsa.documents.appearance ? 1 : 0} file)</p>
             {fsa.documents.appearance ? (
               <div className="space-y-2">
-                <div className="overflow-hidden rounded-lg border border-slate-200">
-                  <AuthImage file={fsa.documents.appearance} alt="Appearance" />
-                </div>
                 <FileLink file={fsa.documents.appearance} onClick={handleDownload} />
               </div>
             ) : (
@@ -186,7 +199,15 @@ export default function FsaDetailPage({ id, reference, onBack }) {
         reference={reference}
         onChange={() => {}}
         readOnly
+        actionableKeys={myActionable}
+        busyKey={busyKey}
+        onDecide={handleDecide}
       />
+      {toast ? (
+        <Toast tone={toast.tone} onClose={() => setToast(null)}>
+          {toast.message}
+        </Toast>
+      ) : null}
     </div>
   )
 }

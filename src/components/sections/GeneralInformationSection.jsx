@@ -7,8 +7,7 @@ export default function GeneralInformationSection({ form, errors, reference, onC
   const set = (field) => (event) => onChange({ ...general, [field]: event.target.value })
   const setNumber = (field) => (event) => onChange({ ...general, [field]: event.target.value === '' ? '' : Number(event.target.value) })
 
-  const procurementDm = reference.users.filter((user) => user.role === 'procurement' && user.division === 'DM')
-  const procurementFt = reference.users.filter((user) => user.role === 'procurement' && user.division === 'FT')
+  const allUsers = reference.users
 
   return (
     <SectionCard step="1" title="FSA General Information" description="Informasi dasar audit first sample inspection part.">
@@ -39,6 +38,18 @@ export default function GeneralInformationSection({ form, errors, reference, onC
           </Select>
         </Field>
 
+        {general.categoryId === 'others' ? (
+          <Field label="Kategori Lainnya" required error={errors.categoryOther} hint="Ketik nama kategori sendiri">
+            <Input
+              value={general.categoryOther ?? ''}
+              onChange={set('categoryOther')}
+              placeholder="Contoh: Rubber Gasket Custom"
+              invalid={Boolean(errors.categoryOther)}
+              disabled={disabled}
+            />
+          </Field>
+        ) : null}
+
         <Field label="Reason of FSA" required error={errors.reasonOfFsa}>
           <Select value={general.reasonId} onChange={set('reasonId')} invalid={Boolean(errors.reasonOfFsa)} disabled={disabled}>
             <option value="">-- Pilih Reason --</option>
@@ -49,6 +60,18 @@ export default function GeneralInformationSection({ form, errors, reference, onC
             ))}
           </Select>
         </Field>
+
+        {general.reasonId === 'other' ? (
+          <Field label="Reason Lainnya" required error={errors.reasonOther} hint="Ketik alasan sendiri">
+            <Input
+              value={general.reasonOther ?? ''}
+              onChange={set('reasonOther')}
+              placeholder="Contoh: Emergency replacement line stop"
+              invalid={Boolean(errors.reasonOther)}
+              disabled={disabled}
+            />
+          </Field>
+        ) : null}
 
         <Field label="Part Number" required error={errors.partNumber} hint="* multi part separated by comma (,). Contoh: PART01950185,PART02774310">
           <Textarea
@@ -87,6 +110,12 @@ export default function GeneralInformationSection({ form, errors, reference, onC
           <Input value={formatDateTime(general.createdAt)} readOnly disabled />
         </Field>
 
+        {general.completedAt || readOnly ? (
+          <Field label="Date of Completion" hint="Tercatat otomatis saat semua fungsi selesai approved">
+            <Input value={general.completedAt ? formatDateTime(general.completedAt) : '-'} readOnly disabled />
+          </Field>
+        ) : null}
+
         <Field label="Drawing Revision" required error={errors.drawingRevision} hint="Mulai dari 0">
           <Input type="number" min="0" step="1" value={general.drawingRevision} onChange={setNumber('drawingRevision')} placeholder="0" invalid={Boolean(errors.drawingRevision)} disabled={disabled} />
         </Field>
@@ -99,14 +128,14 @@ export default function GeneralInformationSection({ form, errors, reference, onC
           <Input type="date" value={general.dateOfSampleSubmission} onChange={set('dateOfSampleSubmission')} invalid={Boolean(errors.dateOfSampleSubmission)} disabled={disabled} />
         </Field>
 
-        <Field label="Sample Quantity" required error={errors.sampleQuantity} hint="Jumlah sample yang dikirim">
-          <Input type="number" min="1" step="1" value={general.sampleQuantity} onChange={setNumber('sampleQuantity')} placeholder="5" invalid={Boolean(errors.sampleQuantity)} disabled={disabled} />
+        <Field label="Sample Quantity" required error={errors.sampleQuantity} hint="Jumlah sample yang dikirim (mulai dari 0)">
+          <Input type="number" min="0" step="1" value={general.sampleQuantity} onChange={setNumber('sampleQuantity')} placeholder="0" invalid={Boolean(errors.sampleQuantity)} disabled={disabled} />
         </Field>
 
         <Field label="Approval DM" required error={errors.verifierDm}>
           <Select value={general.verifierDmId} onChange={set('verifierDmId')} invalid={Boolean(errors.verifierDm)} disabled={disabled}>
             <option value="">-- Pilih Approval DM --</option>
-            {procurementDm.map((user) => (
+            {allUsers.map((user) => (
               <option key={user.id} value={user.id}>
                 {user.name} ({user.email})
               </option>
@@ -117,7 +146,7 @@ export default function GeneralInformationSection({ form, errors, reference, onC
         <Field label="Approval FT" required error={errors.verifierFt}>
           <Select value={general.verifierFtId} onChange={set('verifierFtId')} invalid={Boolean(errors.verifierFt)} disabled={disabled}>
             <option value="">-- Pilih Approval FT --</option>
-            {procurementFt.map((user) => (
+            {allUsers.map((user) => (
               <option key={user.id} value={user.id}>
                 {user.name} ({user.email})
               </option>

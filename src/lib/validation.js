@@ -35,15 +35,19 @@ export function validateForm(form, users) {
   }
   if (!general.categoryId) {
     errors.category = 'Part category wajib dipilih'
+  } else if (general.categoryId === 'others' && String(general.categoryOther ?? '').trim().length < 3) {
+    errors.categoryOther = 'Kategori lainnya wajib diisi minimal 3 karakter'
   }
   if (!general.reasonId) {
     errors.reasonOfFsa = 'Reason of FSA wajib dipilih'
+  } else if (general.reasonId === 'other' && String(general.reasonOther ?? '').trim().length < 3) {
+    errors.reasonOther = 'Reason lainnya wajib diisi minimal 3 karakter'
   }
   if (!general.dateOfSampleSubmission) {
     errors.dateOfSampleSubmission = 'Date of sample submission wajib diisi'
   }
-  if (!general.sampleQuantity || Number(general.sampleQuantity) < 1) {
-    errors.sampleQuantity = 'Sample quantity minimal 1'
+  if (general.sampleQuantity === '' || general.sampleQuantity === null || general.sampleQuantity === undefined || Number(general.sampleQuantity) < 0) {
+    errors.sampleQuantity = 'Sample quantity wajib diisi, mulai dari 0'
   }
   if (!general.verifierDmId) {
     errors.verifierDm = 'Verifikator DM wajib dipilih'
@@ -55,13 +59,49 @@ export function validateForm(form, users) {
     errors.appearance = 'Foto appearance wajib diunggah'
   }
 
+  const electricalId = form.approvals?.electrical?.approverId
+  const mechanicalId = form.approvals?.mechanical?.approverId
+
+  if (!electricalId && !mechanicalId) {
+    errors['approvals.electrical.approverId'] = 'Minimal salah satu (Electrical atau Mechanical) wajib dipilih'
+    errors['approvals.mechanical.approverId'] = 'Minimal salah satu (Electrical atau Mechanical) wajib dipilih'
+  }
+
   for (const [key, role] of Object.entries(APPROVAL_ROLE)) {
     const approval = form.approvals[key]
-    if (approval.decision !== 'pending' && !approval.approverId) {
-      errors[`approvals.${key}.approverId`] = 'Pilih approver saat keputusan sudah diisi'
-    } else if (approval.approverId && !users.some((user) => user.id === approval.approverId && user.role === role)) {
-      errors[`approvals.${key}.approverId`] = 'Approver tidak sesuai dengan role'
+    if (key === 'electrical' || key === 'mechanical') {
+      if (approval?.approverId && !users.some((user) => user.id === approval.approverId && user.role === role)) {
+        errors[`approvals.${key}.approverId`] = 'Approver tidak sesuai dengan role'
+      }
+    } else {
+      if (!approval?.approverId) {
+        errors[`approvals.${key}.approverId`] = 'Approver wajib dipilih sejak awal'
+      } else if (!users.some((user) => user.id === approval.approverId && user.role === role)) {
+        errors[`approvals.${key}.approverId`] = 'Approver tidak sesuai dengan role'
+      }
     }
+  }
+
+  // Validasi berurut: tidak boleh meloncat tahap
+  const d = (key) => form.approvals?.[key]?.decision ?? 'pending'
+  const isActive = (key) => form.approvals?.[key]?.approverId && d(key) !== 'pending'
+  const isApprovedOrSkipped = (key) => {
+    if (!form.approvals?.[key]?.approverId) return true
+    return d(key) === 'approved'
+  }
+
+  const markSkipped = (keys, need) => {
+    for (const key of keys) {
+      if (isActive(key)) errors[`approvals.${key}`] = `Tidak bisa meloncat: ${need} harus approved dulu`
+    }
+  }
+
+  if (!isApprovedOrSkipped('procurement')) {
+    markSkipped(['electrical', 'mechanical', 'quality', 'production'], 'SPR')
+  } else if (!isApprovedOrSkipped('electrical') || !isApprovedOrSkipped('mechanical')) {
+    markSkipped(['quality', 'production'], 'Engineering (yang dipilih)')
+  } else if (!isApprovedOrSkipped('quality')) {
+    markSkipped(['production'], 'Quality')
   }
 
   return errors

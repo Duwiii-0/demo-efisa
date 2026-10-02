@@ -6,6 +6,7 @@ export const STATUS_STYLES = {
   accepted: 'bg-[#009999]/25 text-[#006B6B]',
   approved: 'bg-[#009999]/25 text-[#006B6B]',
   rejected: 'bg-[#EF0137]/25 text-[#B80028]',
+  rework: 'bg-orange-400/25 text-orange-800',
   rework_required: 'bg-[#FFD200]/30 text-[#7A6100]',
   canceled: 'bg-slate-400/25 text-slate-600',
   not_available: 'bg-slate-400/20 text-slate-600',

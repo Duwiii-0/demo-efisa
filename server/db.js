@@ -31,6 +31,77 @@ function initialState() {
   }
 }
 
+// Perbaikan berurut: reset tahap yang meloncat ke pending + sinkronkan approvalStatus.
+// Contoh yang diperbaiki: production approved padahal engineering belum -> production di-reset.
+function deriveSequentialStatus(approvals) {
+  const d = (key) => approvals?.[key]?.decision ?? 'pending'
+  const keys = ['procurement', 'electrical', 'mechanical', 'quality', 'production']
+  if (keys.every((key) => d(key) === 'approved')) return 'accepted'
+  if (keys.some((key) => d(key) === 'rejected' || d(key) === 'rework')) return 'rework_required'
+  if (d('procurement') !== 'approved') return 'waiting_approval_spr'
+  if (d('electrical') !== 'approved' || d('mechanical') !== 'approved') return 'waiting_approval_engineering'
+  if (d('quality') !== 'approved') return 'waiting_approval_quality'
+  if (d('production') !== 'approved') return 'waiting_approval_production'
+  return 'waiting_approval_spr'
+}
+
+function repairFsaInPlace(fsa) {
+  const changes = []
+  if (!fsa.approvals) return changes
+
+  const reset = (key, reason) => {
+    if (fsa.approvals[key]?.decision !== 'pending') {
+      // Assignment nama dipertahankan, hanya decision yang dikembalikan ke pending
+      fsa.approvals[key] = { decision: 'pending', approverId: fsa.approvals[key]?.approverId ?? null, decidedAt: null, remark: '' }
+      changes.push(`${key}: reset (${reason})`)
+    }
+  }
+
+  const d = (key) => fsa.approvals?.[key]?.decision ?? 'pending'
+  if (d('procurement') !== 'approved') {
+    for (const key of ['electrical', 'mechanical', 'quality', 'production']) {
+      reset(key, 'SPR belum approved')
+    }
+  } else if (d('electrical') !== 'approved' || d('mechanical') !== 'approved') {
+    for (const key of ['quality', 'production']) reset(key, 'Engineering belum lengkap')
+  } else if (d('quality') !== 'approved') {
+    reset('production', 'Quality belum approved')
+  }
+
+  if (fsa.approvalStatus !== 'canceled') {
+    const expected = deriveSequentialStatus(fsa.approvals)
+    if (fsa.approvalStatus !== expected) {
+      changes.push(`status: ${fsa.approvalStatus} -> ${expected}`)
+      fsa.approvalStatus = expected
+    }
+  }
+
+  if (changes.length > 0) {
+    fsa.history = Array.isArray(fsa.history) ? fsa.history : []
+    fsa.history.push({
+      at: new Date().toISOString(),
+      byId: fsa.createdById ?? null,
+      action: 'auto_repair',
+      note: `Perbaikan urutan otomatis: ${changes.join('; ')}`,
+    })
+  }
+
+  return changes
+}
+
+export function repairDb() {
+  const db = getDb()
+  const report = []
+  for (const fsa of db.fsas) {
+    const changes = repairFsaInPlace(fsa)
+    if (changes.length > 0) {
+      report.push({ fsaNumber: fsa.fsaNumber, id: fsa.id, changes })
+    }
+  }
+  if (report.length > 0) saveDb()
+  return report
+}
+
 function load() {
   ensureDirs()
 
@@ -41,7 +112,16 @@ function load() {
   }
 
   try {
-    return JSON.parse(fs.readFileSync(dbFile, 'utf8'))
+    const parsed = JSON.parse(fs.readFileSync(dbFile, 'utf8'))
+    // Auto-repair saat load agar data lama yang meloncat langsung berurut
+    let dirty = false
+    for (const fsa of parsed.fsas ?? []) {
+      if (repairFsaInPlace(fsa).length > 0) dirty = true
+    }
+    if (dirty) {
+      fs.writeFileSync(dbFile, `${JSON.stringify(parsed, null, 2)}\n`)
+    }
+    return parsed
   } catch {
     const seeded = initialState()
     fs.writeFileSync(dbFile, `${JSON.stringify(seeded, null, 2)}\n`)

@@ -6,6 +6,7 @@ import FsaListPage from './components/FsaListPage.jsx'
 import FsaCreatePage from './components/FsaCreatePage.jsx'
 import FsaDetailPage from './components/FsaDetailPage.jsx'
 import { Alert, Button, Spinner } from './components/ui.jsx'
+import FsaEditPage from './components/FsaEditPage.jsx'
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -129,6 +130,25 @@ export default function App() {
           id={route.id}
           reference={reference}
           onBack={() => setRoute({ view: 'list', id: null })}
+          onEdit={
+            session.user.role === 'procurement'
+              ? (fsa) => setRoute({ view: 'edit', id: fsa.id, fsa })
+              : undefined
+          }
+        />
+      ) : null}
+
+      {route.view === 'edit' ? (
+        <FsaEditPage
+          key={route.id}
+          fsa={route.fsa}
+          reference={reference}
+          user={session.user}
+          onCancel={() => setRoute({ view: 'detail', id: route.id })}
+          onSaved={(fsa) => {
+            setFlash(`FSA ${fsa.fsaNumber} berhasil diperbarui dan dikembalikan ke Waiting Approval SPR.`)
+            setRoute({ view: 'detail', id: fsa.id })
+          }}
         />
       ) : null}
     </AppLayout>

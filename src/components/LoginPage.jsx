@@ -33,7 +33,11 @@ export default function LoginPage({ onLogin }) {
     }
   }
 
-  const demoUser = accounts?.users?.find((user) => user.isDemoLogin) ?? accounts?.users?.[0]
+  const quickLogin = (user) => {
+    setEmail(user.email)
+    setPassword(accounts.password)
+    submit(user.email, accounts.password)
+  }
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-100 px-4 py-10">
@@ -68,7 +72,7 @@ export default function LoginPage({ onLogin }) {
                 type="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                placeholder="namabelakang.namadepan@siemens.com"
+                placeholder="role@siemens.com (mis. procurement@siemens.com)"
                 autoComplete="username"
               />
             </Field>
@@ -94,41 +98,30 @@ export default function LoginPage({ onLogin }) {
               <Spinner label="Mengambil akun demo..." />
             ) : (
               <div className="space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Akun demo</p>
-                {demoUser ? (
-                  <div className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-3 text-sm">
-                    <p className="font-semibold text-sky-900">{demoUser.name}</p>
-                    <p className="text-sky-800">{demoUser.email}</p>
-                    <p className="mt-1 text-sky-700">
-                      Password: <span className="font-mono font-semibold">{accounts.password}</span>
-                    </p>
-                    <Button
-                      variant="secondary"
-                      className="mt-3 w-full"
-                      disabled={busy}
-                      onClick={() => {
-                        setEmail(demoUser.email)
-                        setPassword(accounts.password)
-                        submit(demoUser.email, accounts.password)
-                      }}
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Akun demo — password: <span className="font-mono font-semibold">{accounts.password}</span>
+                </p>
+                <ul className="max-h-64 space-y-2 overflow-auto">
+                  {accounts.users.map((user) => (
+                    <li
+                      key={user.id}
+                      className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm"
                     >
-                      Login sebagai {demoUser.name}
-                    </Button>
-                  </div>
-                ) : null}
-                <details className="text-sm">
-                  <summary className="cursor-pointer text-slate-500">
-                    Lihat semua {accounts.users.length} user
-                  </summary>
-                  <ul className="mt-2 max-h-52 space-y-1 overflow-auto rounded-lg border border-slate-200 p-2 text-xs text-slate-600">
-                    {accounts.users.map((user) => (
-                      <li key={user.id} className="flex justify-between gap-2">
-                        <span>{user.name}</span>
-                        <span className="text-slate-400">{user.email}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </details>
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-slate-900">{user.name}</p>
+                        <p className="truncate font-mono text-xs text-slate-500">{user.email}</p>
+                      </div>
+                      <Button
+                        variant="secondary"
+                        className="shrink-0 px-3 py-1 text-xs"
+                        disabled={busy}
+                        onClick={() => quickLogin(user)}
+                      >
+                        Login
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
           </div>

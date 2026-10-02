@@ -63,6 +63,7 @@ const variants = {
   secondary: 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50',
   ghost: 'text-slate-600 hover:bg-slate-100',
   danger: 'border border-rose-300 bg-white text-rose-600 hover:bg-rose-50',
+  warning: 'border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100',
 }
 
 export function Button({ variant = 'primary', className = '', ...props }) {
@@ -76,6 +77,26 @@ export function Alert({ tone = 'error', children }) {
     info: 'border-sky-200 bg-sky-50 text-sky-800',
   }
   return <div className={`rounded-lg border px-4 py-3 text-sm font-medium ${tones[tone]}`}>{children}</div>
+}
+
+export function Toast({ tone = 'success', onClose, children }) {
+  const tones = {
+    error: 'border-rose-200 bg-rose-50 text-rose-700',
+    success: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    info: 'border-sky-200 bg-sky-50 text-sky-800',
+  }
+  return (
+    <div className="fixed bottom-5 left-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2">
+      <div className={`flex items-start justify-between gap-3 rounded-xl border px-4 py-3 text-sm font-medium shadow-lg ${tones[tone]}`}>
+        <span>{children}</span>
+        {onClose ? (
+          <button type="button" onClick={onClose} className="shrink-0 font-bold opacity-60 transition hover:opacity-100" aria-label="Tutup notifikasi">
+            ✕
+          </button>
+        ) : null}
+      </div>
+    </div>
+  )
 }
 
 export function Card({ title, children, className = '' }) {

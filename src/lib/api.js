@@ -57,6 +57,7 @@ export const api = {
   listFsas: (params) => request(`/api/fsa?${new URLSearchParams(params)}`),
   getFsa: (id) => request(`/api/fsa/${id}`),
   createFsa: (payload) => request('/api/fsa', { method: 'POST', body: payload }),
+  updateFsa: (id, payload) => request(`/api/fsa/${id}`, { method: 'PATCH', body: payload }),
   updateDecision: (id, key, payload) => request(`/api/fsa/${id}/decision/${key}`, { method: 'PATCH', body: payload }),
   downloadUrl: (storedName) => `/api/files/${storedName}`,
 }
