@@ -74,14 +74,22 @@ export default function FsaCreatePage({ reference, user, onCancel, onCreated }) 
       return
     }
 
+    const payload = {
+      general: form.general,
+      documents: form.documents,
+      checklist: form.checklist,
+      approvals: form.approvals,
+    }
+    const payloadSize = JSON.stringify(payload).length
+    if (payloadSize > 4 * 1024 * 1024) {
+      setSubmitError(`Total file terlalu besar (${(payloadSize / 1024 / 1024).toFixed(1)} MB). Kompres atau kurangi file PPAP. Maksimal ~4 MB.`)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
+
     setBusy(true)
     try {
-      const result = await api.createFsa({
-        general: form.general,
-        documents: form.documents,
-        checklist: form.checklist,
-        approvals: form.approvals,
-      })
+      const result = await api.createFsa(payload)
       onCreated(result.fsa)
     } catch (error) {
       setSubmitError(error.message)

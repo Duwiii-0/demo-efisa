@@ -1,15 +1,15 @@
 // Kompresi gambar sebelum dikirim ke API.
 // Vercel serverless punya batas body 4.5MB, jadi gambar besar harus diperkecil.
-const MAX_DIMENSION = 1600
-const JPEG_QUALITY = 0.75
+const MAX_DIMENSION = 1200
+const JPEG_QUALITY = 0.6
+const SKIP_THRESHOLD = 200 * 1024
 
 export async function compressImage(file) {
   if (!file.type.startsWith('image/')) {
     return file
   }
 
-  // Kalau sudah kecil, skip kompresi
-  if (file.size < 500 * 1024) {
+  if (file.size < SKIP_THRESHOLD) {
     return file
   }
 

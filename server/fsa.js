@@ -178,10 +178,9 @@ async function normalizeDocuments(raw, fsaId, errors) {
     errors['appearance'] = 'File appearance harus berupa gambar'
   }
 
-  const ppap = []
-  for (const file of rawPpap.slice(0, MAX_FILES)) {
-    ppap.push(await storeUpload({ fsaId, ...file }))
-  }
+  const ppap = await Promise.all(
+    rawPpap.slice(0, MAX_FILES).map((file) => storeUpload({ fsaId, ...file })),
+  )
 
   return { appearance, ppap }
 }
@@ -207,10 +206,15 @@ async function normalizeApprovals(raw, errors) {
   const source = raw ?? {}
   const approvals = {}
 
-  for (const fn of APPROVAL_FUNCTIONS) {
+  const existenceChecks = await Promise.all(
+    APPROVAL_FUNCTIONS.map((fn) => userExists(source[fn.key]?.approverId)),
+  )
+
+  for (let i = 0; i < APPROVAL_FUNCTIONS.length; i++) {
+    const fn = APPROVAL_FUNCTIONS[i]
     const input = source[fn.key] ?? {}
     const decision = DECISION_IDS.has(input.decision) ? input.decision : 'pending'
-    const approverId = (await userExists(input.approverId)) ? input.approverId : null
+    const approverId = existenceChecks[i] ? input.approverId : null
 
     if (input.approverId && !approverId) {
       errors[`approvals.${fn.key}.approverId`] = `Approver ${fn.key} tidak ditemukan`
