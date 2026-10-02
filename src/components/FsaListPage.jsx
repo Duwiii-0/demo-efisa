@@ -101,7 +101,7 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, canCrea
   }, [items, filters])
 
   return (
-    <div className="mx-auto max-w-6xl space-y-5">
+    <div className="mx-auto max-w-[1600px] space-y-5">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-semibold text-slate-900">FSA List</h1>

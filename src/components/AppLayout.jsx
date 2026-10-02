@@ -38,7 +38,7 @@ export default function AppLayout({ user, reference, onLogout, children }) {
   return (
     <div className="min-h-screen bg-slate-100">
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 md:px-8">
+        <div className="mx-auto flex max-w-[1600px] items-center justify-between px-4 py-3 md:px-6">
           <div className="flex items-center gap-3">
             <span className="text-sm font-bold tracking-[0.25em] text-sky-700">SIEMENS</span>
             <span className="hidden h-5 w-px bg-slate-200 sm:block" />
@@ -79,7 +79,7 @@ export default function AppLayout({ user, reference, onLogout, children }) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-6 md:px-8">{children}</main>
+      <main className="mx-auto max-w-[1600px] px-4 py-6 md:px-6">{children}</main>
     </div>
   )
 }

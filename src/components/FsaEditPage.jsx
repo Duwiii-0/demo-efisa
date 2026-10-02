@@ -151,7 +151,7 @@ export default function FsaEditPage({ fsa, reference, user, onCancel, onSaved })
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mx-auto max-w-6xl space-y-6">
+    <form onSubmit={handleSubmit} className="mx-auto max-w-[1600px] space-y-6">
       <header className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="mb-1 flex items-center gap-2">

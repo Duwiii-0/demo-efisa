@@ -92,7 +92,7 @@ export default function FsaCreatePage({ reference, user, onCancel, onCreated }) 
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mx-auto max-w-6xl space-y-6">
+    <form onSubmit={handleSubmit} className="mx-auto max-w-[1600px] space-y-6">
       <header className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-semibold text-slate-900">Create New FSA</h1>
