@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { Field, SectionCard } from '../ui.jsx'
 import { formatBytes } from '../../lib/format.js'
 import { isImage, MAX_FILE_SIZE, MAX_PPAP_FILES, readFileAsDataUrl } from '../../lib/validation.js'
+import { compressImage } from '../../lib/image.js'
 
 function UploadButton({ accept, multiple, onPick, disabled, label }) {
   const inputRef = useRef(null)
@@ -69,8 +70,13 @@ export default function PpapDocumentsSection({ form, errors, onChange }) {
       return
     }
 
-    const payload = await readFileAsDataUrl(file)
-    setDocuments({ appearance: { ...payload, size: file.size, localPreview: URL.createObjectURL(file) } })
+    try {
+      const compressed = await compressImage(file)
+      const payload = await readFileAsDataUrl(compressed)
+      setDocuments({ appearance: { ...payload, size: compressed.size, localPreview: URL.createObjectURL(compressed) } })
+    } catch (err) {
+      setLocalError(err.message)
+    }
   }
 
   async function handlePpap(files) {
@@ -86,10 +92,17 @@ export default function PpapDocumentsSection({ form, errors, onChange }) {
       return
     }
 
-    const payloads = await Promise.all(
-      files.map(async (file) => ({ ...(await readFileAsDataUrl(file)), size: file.size })),
-    )
-    setDocuments({ ppap: [...documents.ppap, ...payloads] })
+    try {
+      const payloads = await Promise.all(
+        files.map(async (file) => {
+          const compressed = file.type.startsWith('image/') ? await compressImage(file) : file
+          return { ...(await readFileAsDataUrl(compressed)), size: compressed.size }
+        }),
+      )
+      setDocuments({ ppap: [...documents.ppap, ...payloads] })
+    } catch (err) {
+      setLocalError(err.message)
+    }
   }
 
   return (

@@ -47,11 +47,17 @@ create index if not exists fsas_supplier_idx on public.fsas (supplier_id);
 create index if not exists fsas_created_idx on public.fsas (created_at desc);
 
 -- 3) Sessions (pengganti Map in-memory agar aman di Vercel serverless)
+-- expires_at = 7 hari setelah login. Session kedaluwarsa otomatis ditolak.
 create table if not exists public.sessions (
   token text primary key,
   user_id text not null references public.users (id) on delete cascade,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null default (now() + interval '7 days')
 );
+
+-- Migrasi untuk DB yang sudah ada sebelum kolom expires_at ditambah:
+alter table public.sessions
+  add column if not exists expires_at timestamptz not null default (now() + interval '7 days');
 
 -- 4) Storage bucket untuk upload (appearance + PPAP, maks 10MB/file)
 insert into storage.buckets (id, name, public)

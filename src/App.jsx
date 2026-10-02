@@ -1,20 +1,21 @@
 import { useCallback, useEffect, useState } from 'react'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { api, setToken, getToken } from './lib/api.js'
 import LoginPage from './components/LoginPage.jsx'
 import AppLayout from './components/AppLayout.jsx'
 import FsaListPage from './components/FsaListPage.jsx'
 import FsaCreatePage from './components/FsaCreatePage.jsx'
 import FsaDetailPage from './components/FsaDetailPage.jsx'
-import { Alert, Button, Spinner } from './components/ui.jsx'
 import FsaEditPage from './components/FsaEditPage.jsx'
+import { Alert, Spinner } from './components/ui.jsx'
 
-export default function App() {
+function AppRoutes() {
   const [session, setSession] = useState(null)
   const [reference, setReference] = useState(null)
-  const [route, setRoute] = useState({ view: 'list', id: null })
   const [flash, setFlash] = useState('')
   const [bootstrapped, setBootstrapped] = useState(false)
   const [error, setError] = useState('')
+  const navigate = useNavigate()
 
   useEffect(() => {
     if (!getToken()) {
@@ -45,19 +46,19 @@ export default function App() {
       const data = await api.reference()
       setReference(data)
       setSession({ user })
-      setRoute({ view: 'list', id: null })
+      navigate('/')
     } catch (err) {
       setToken(null)
       setError(err.message)
     }
-  }, [])
+  }, [navigate])
 
   const handleLogout = useCallback(() => {
     setToken(null)
     setSession(null)
     setReference(null)
-    setRoute({ view: 'list', id: null })
-  }, [])
+    navigate('/login')
+  }, [navigate])
 
   if (!bootstrapped) {
     return (
@@ -95,62 +96,78 @@ export default function App() {
       onLogout={handleLogout}
     >
       {flash ? (
-        <div className="mx-auto mb-5 max-w-6xl">
+        <div className="mx-auto mb-5 max-w-[1600px]">
           <Alert tone="success">{flash}</Alert>
         </div>
       ) : null}
 
-      {route.view === 'list' ? (
-        <FsaListPage
-          reference={reference}
-          canCreate={session.user.role === 'procurement'}
-          onCreate={() => setRoute({ view: 'create', id: null })}
-          onOpenDetail={(id) => {
-            setFlash('')
-            setRoute({ view: 'detail', id })
-          }}
-        />
-      ) : null}
-
-      {route.view === 'create' ? (
-        <FsaCreatePage
-          reference={reference}
-          user={session.user}
-          onCancel={() => setRoute({ view: 'list', id: null })}
-          onCreated={(fsa) => {
-            setFlash(`FSA ${fsa.fsaNumber} berhasil dibuat dan menunggu approval.`)
-            setRoute({ view: 'detail', id: fsa.id })
-          }}
-        />
-      ) : null}
-
-      {route.view === 'detail' ? (
-        <FsaDetailPage
-          key={route.id}
-          id={route.id}
-          reference={reference}
-          onBack={() => setRoute({ view: 'list', id: null })}
-          onEdit={
-            session.user.role === 'procurement'
-              ? (fsa) => setRoute({ view: 'edit', id: fsa.id, fsa })
-              : undefined
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <FsaListPage
+              reference={reference}
+              canCreate={session.user.role === 'procurement'}
+              onCreate={() => navigate('/create')}
+              onOpenDetail={(id) => {
+                setFlash('')
+                navigate(`/fsa/${id}`)
+              }}
+            />
           }
         />
-      ) : null}
-
-      {route.view === 'edit' ? (
-        <FsaEditPage
-          key={route.id}
-          fsa={route.fsa}
-          reference={reference}
-          user={session.user}
-          onCancel={() => setRoute({ view: 'detail', id: route.id })}
-          onSaved={(fsa) => {
-            setFlash(`FSA ${fsa.fsaNumber} berhasil diperbarui dan dikembalikan ke Waiting Approval SPR.`)
-            setRoute({ view: 'detail', id: fsa.id })
-          }}
+        <Route
+          path="/create"
+          element={
+            <FsaCreatePage
+              reference={reference}
+              user={session.user}
+              onCancel={() => navigate('/')}
+              onCreated={(fsa) => {
+                setFlash(`FSA ${fsa.fsaNumber} berhasil dibuat dan menunggu approval.`)
+                navigate(`/fsa/${fsa.id}`)
+              }}
+            />
+          }
         />
-      ) : null}
+        <Route
+          path="/fsa/:id"
+          element={
+            <FsaDetailPage
+              reference={reference}
+              onBack={() => navigate('/')}
+              onEdit={
+                session.user.role === 'procurement'
+                  ? (fsa) => navigate(`/fsa/${fsa.id}/edit`)
+                  : undefined
+              }
+            />
+          }
+        />
+        <Route
+          path="/fsa/:id/edit"
+          element={
+            <FsaEditPage
+              reference={reference}
+              user={session.user}
+              onCancel={(id) => navigate(`/fsa/${id}`)}
+              onSaved={(fsa) => {
+                setFlash(`FSA ${fsa.fsaNumber} berhasil diperbarui dan dikembalikan ke Waiting Approval SPR.`)
+                navigate(`/fsa/${fsa.id}`)
+              }}
+            />
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </AppLayout>
+  )
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppRoutes />
+    </BrowserRouter>
   )
 }

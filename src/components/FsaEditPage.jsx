@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { api } from '../lib/api.js'
-import { Alert, Button } from './ui.jsx'
+import { Alert, Button, Spinner } from './ui.jsx'
 import GeneralInformationSection from './sections/GeneralInformationSection.jsx'
 import PpapDocumentsSection from './sections/PpapDocumentsSection.jsx'
 import DocumentReviewChecklistSection from './sections/DocumentReviewChecklistSection.jsx'
@@ -62,11 +63,36 @@ function buildFormFromFsa(fsa) {
   }
 }
 
-export default function FsaEditPage({ fsa, reference, user, onCancel, onSaved }) {
-  const [form, setForm] = useState(() => buildFormFromFsa(fsa))
+export default function FsaEditPage({ reference, user, onCancel, onSaved }) {
+  const { id } = useParams()
+  const [fsa, setFsa] = useState(null)
+  const [form, setForm] = useState(null)
   const [errors, setErrors] = useState({})
   const [submitError, setSubmitError] = useState('')
   const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    api
+      .getFsa(id)
+      .then((data) => {
+        if (!active) return
+        setFsa(data.fsa)
+        setForm(buildFormFromFsa(data.fsa))
+      })
+      .catch((err) => active && setSubmitError(err.message))
+    return () => {
+      active = false
+    }
+  }, [id])
+
+  if (!form) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <Spinner />
+      </div>
+    )
+  }
 
   const setGeneral = (general) => setForm((current) => ({ ...current, general }))
 
@@ -132,7 +158,7 @@ export default function FsaEditPage({ fsa, reference, user, onCancel, onSaved })
 
     setBusy(true)
     try {
-      const result = await api.updateFsa(fsa.id, {
+      const result = await api.updateFsa(id, {
         general: form.general,
         documents: {
           appearance: newAppearance,
@@ -159,7 +185,7 @@ export default function FsaEditPage({ fsa, reference, user, onCancel, onSaved })
               Rework Required
             </span>
           </div>
-          <h1 className="text-xl font-semibold text-slate-900">Edit FSA – {fsa.fsaNumber}</h1>
+          <h1 className="text-xl font-semibold text-slate-900">Edit FSA – {form.general.fsaNumber}</h1>
           <p className="text-sm text-slate-500">
             Perbarui data FSA. Setelah disimpan, semua approval akan di-reset ke Waiting Approval SPR.
           </p>

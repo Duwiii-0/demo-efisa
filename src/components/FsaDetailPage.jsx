@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { api, downloadFile } from '../lib/api.js'
 import { Alert, Button, Card, DetailRow, SectionCard, Spinner, Toast } from './ui.jsx'
 import GeneralInformationSection from './sections/GeneralInformationSection.jsx'
@@ -29,7 +30,8 @@ function FileLink({ file, onClick }) {
   )
 }
 
-export default function FsaDetailPage({ id, reference, onBack, onEdit }) {
+export default function FsaDetailPage({ reference, onBack, onEdit }) {
+  const { id } = useParams()
   const [fsa, setFsa] = useState(null)
   const [error, setError] = useState('')
   const [toast, setToast] = useState(null)

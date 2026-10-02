@@ -43,12 +43,15 @@ export function destroySession(token) {
 
 // Versi async: pakai tabel public.sessions saat Supabase aktif
 // (wajib untuk Vercel serverless karena Map in-memory hilang antar request).
+const SESSION_TTL_DAYS = 7
+
 export async function createSessionAsync(userId) {
   if (!isSupabaseEnabled) return createSession(userId)
   const token = randomUUID()
+  const expiresAt = new Date(Date.now() + SESSION_TTL_DAYS * 24 * 60 * 60 * 1000).toISOString()
   const { error } = await getSupabaseAdmin()
     .from('sessions')
-    .insert({ token, user_id: userId })
+    .insert({ token, user_id: userId, expires_at: expiresAt })
   if (error) throw error
   return token
 }
@@ -58,10 +61,15 @@ export async function resolveSessionUserAsync(token) {
   if (!isSupabaseEnabled) return resolveSessionUser(token)
   const { data } = await getSupabaseAdmin()
     .from('sessions')
-    .select('user_id')
+    .select('user_id, expires_at')
     .eq('token', token)
     .single()
-  return data?.user_id ?? null
+  if (!data) return null
+  if (new Date(data.expires_at).getTime() < Date.now()) {
+    await destroySessionAsync(token)
+    return null
+  }
+  return data.user_id
 }
 
 export async function destroySessionAsync(token) {
