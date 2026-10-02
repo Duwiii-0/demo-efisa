@@ -27,9 +27,8 @@ import {
   downloadUpload,
   findUploadByStoredName,
   findUploadSupabase,
-  UPLOADS_BUCKET,
 } from './server/uploads.js'
-import { getSupabaseAdmin } from './server/supabase.js'
+import { getSupabaseAdmin, UPLOADS_BUCKET } from './server/supabase.js'
 import {
   findUserByEmail,
   findUserById,
