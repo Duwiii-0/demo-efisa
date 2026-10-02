@@ -141,19 +141,29 @@ export default function FsaEditPage({ reference, user, onCancel, onSaved }) {
       return
     }
 
-    // Pisahkan dokumen baru (ada dataUrl) vs dokumen existing (hanya metadata server)
+    // File sudah diupload langsung ke Storage saat dipilih,
+    // jadi kirim metadata saja (tanpa dataUrl) ke server
     const newAppearance = form.documents.appearance?._existing
-      ? null // tidak kirim, server akan pertahankan yang lama
-      : form.documents.appearance
+      ? null
+      : {
+          fileName: form.documents.appearance.fileName,
+          storedName: form.documents.appearance.storedName,
+          mime: form.documents.appearance.mime,
+          size: form.documents.appearance.size,
+          uploadedAt: form.documents.appearance.uploadedAt,
+        }
 
-    // Kirim list ppap lengkap: existing (storedName) + baru (dataUrl)
-    // Server akan membedakan keduanya dan mengelola dengan benar
     const fullPpap = form.documents.ppap.map((f) => {
       if (f._existing) {
-        // Hanya kirim identifier server
         return { storedName: f.storedName, fileName: f.fileName }
       }
-      return f // file baru: ada dataUrl
+      return {
+        fileName: f.fileName,
+        storedName: f.storedName,
+        mime: f.mime,
+        size: f.size,
+        uploadedAt: f.uploadedAt,
+      }
     })
 
     setBusy(true)
@@ -213,6 +223,7 @@ export default function FsaEditPage({ reference, user, onCancel, onSaved }) {
       <PpapDocumentsSection
         form={form}
         errors={errors}
+        fsaId={id}
         onChange={(documents) => setForm((current) => ({ ...current, documents }))}
       />
 

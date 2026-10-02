@@ -14,6 +14,7 @@ export default function FsaCreatePage({ reference, user, onCancel, onCreated }) 
   const [errors, setErrors] = useState({})
   const [submitError, setSubmitError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [fsaId] = useState(() => crypto.randomUUID())
 
   useEffect(() => {
     let active = true
@@ -76,15 +77,14 @@ export default function FsaCreatePage({ reference, user, onCancel, onCreated }) 
 
     const payload = {
       general: form.general,
-      documents: form.documents,
+      documents: {
+        appearance: form.documents.appearance
+          ? { fileName: form.documents.appearance.fileName, storedName: form.documents.appearance.storedName, mime: form.documents.appearance.mime, size: form.documents.appearance.size, uploadedAt: form.documents.appearance.uploadedAt }
+          : null,
+        ppap: form.documents.ppap.map((f) => ({ fileName: f.fileName, storedName: f.storedName, mime: f.mime, size: f.size, uploadedAt: f.uploadedAt })),
+      },
       checklist: form.checklist,
       approvals: form.approvals,
-    }
-    const payloadSize = JSON.stringify(payload).length
-    if (payloadSize > 4 * 1024 * 1024) {
-      setSubmitError(`Total file terlalu besar (${(payloadSize / 1024 / 1024).toFixed(1)} MB). Kompres atau kurangi file PPAP. Maksimal ~4 MB.`)
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-      return
     }
 
     setBusy(true)
@@ -129,6 +129,7 @@ export default function FsaCreatePage({ reference, user, onCancel, onCreated }) 
       <PpapDocumentsSection
         form={form}
         errors={errors}
+        fsaId={fsaId}
         onChange={(documents) => setForm((current) => ({ ...current, documents }))}
       />
 

@@ -1,6 +1,7 @@
 import 'dotenv/config'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import crypto from 'node:crypto'
 import express from 'express'
 import { buildNextNumber, createFsa, updateDecision, updateFsa, ValidationError } from './server/fsa.js'
 import {
@@ -26,7 +27,9 @@ import {
   downloadUpload,
   findUploadByStoredName,
   findUploadSupabase,
+  UPLOADS_BUCKET,
 } from './server/uploads.js'
+import { getSupabaseAdmin } from './server/supabase.js'
 import {
   findUserByEmail,
   findUserById,
@@ -224,6 +227,48 @@ app.patch('/api/fsa/:id/decision/:key', requireAuth, async (req, res, next) => {
       res.status(error.status).json({ error: error.message, errors: error.errors ?? null })
       return
     }
+    next(error)
+  }
+})
+
+app.post('/api/uploads/sign', requireAuth, async (req, res, next) => {
+  try {
+    if (!isSupabaseEnabled) {
+      res.status(400).json({ error: 'Direct upload hanya didukung saat Supabase aktif' })
+      return
+    }
+
+    const fileName = String(req.body?.fileName ?? '').slice(0, 180)
+    const mime = String(req.body?.mime ?? 'application/octet-stream')
+    const fsaId = String(req.body?.fsaId ?? '')
+
+    if (!fileName || !fsaId) {
+      res.status(400).json({ error: 'fileName dan fsaId wajib diisi' })
+      return
+    }
+
+    const ext = fileName.includes('.') ? fileName.split('.').pop().toLowerCase() : ''
+    const safeExt = /^[a-z0-9]{1,8}$/.test(ext) ? ext : 'bin'
+    const storedName = `${crypto.randomUUID()}.${safeExt}`
+    const path = `${fsaId}/${storedName}`
+
+    const { data, error } = await getSupabaseAdmin()
+      .storage.from(UPLOADS_BUCKET)
+      .createSignedUploadUrl(path)
+
+    if (error) {
+      res.status(500).json({ error: `Gagal membuat upload URL: ${error.message}` })
+      return
+    }
+
+    res.json({
+      uploadUrl: data.signedUrl,
+      storedName,
+      path,
+      fileName,
+      mime,
+    })
+  } catch (error) {
     next(error)
   }
 })

@@ -15,7 +15,7 @@ import {
   saveFsa as saveFsaRow,
   userExistsById,
 } from './store.js'
-import { MAX_FILES, storeUpload } from './uploads.js'
+import { MAX_FILES } from './uploads.js'
 
 const PART_NUMBER_PATTERN = /^PART\d{8}$/
 
@@ -164,23 +164,25 @@ async function userExists(userId) {
   return userExistsById(userId)
 }
 
-async function normalizeDocuments(raw, fsaId, errors) {
+function normalizeDocuments(raw, errors) {
   const rawPpap = Array.isArray(raw?.ppap) ? raw.ppap : []
   if (rawPpap.length > MAX_FILES) {
     errors['ppapDocuments'] = `Maksimal ${MAX_FILES} file PPAP`
   }
 
-  const appearance = raw?.appearance
-    ? await storeUpload({ fsaId, ...raw.appearance })
-    : null
+  const appearance = raw?.appearance ?? null
 
-  if (appearance && !appearance.mime.startsWith('image/')) {
+  if (appearance && !appearance.mime?.startsWith('image/')) {
     errors['appearance'] = 'File appearance harus berupa gambar'
   }
 
-  const ppap = await Promise.all(
-    rawPpap.slice(0, MAX_FILES).map((file) => storeUpload({ fsaId, ...file })),
-  )
+  const ppap = rawPpap.slice(0, MAX_FILES).map((file) => ({
+    fileName: file.fileName,
+    storedName: file.storedName,
+    mime: file.mime,
+    size: file.size,
+    uploadedAt: file.uploadedAt ?? new Date().toISOString(),
+  }))
 
   return { appearance, ppap }
 }
@@ -358,21 +360,22 @@ export async function updateFsa(fsaId, payload, actor) {
 
     // Appearance: hanya replace jika ada file baru (bukan null)
     if (rawAppearance !== null && rawAppearance !== undefined) {
-      try {
-        const newAppearance = await storeUpload({ fsaId, ...rawAppearance })
-        if (!newAppearance.mime.startsWith('image/')) {
-          errors['appearance'] = 'File appearance harus berupa gambar'
-        } else {
-          documents.appearance = newAppearance
+      if (!rawAppearance.mime?.startsWith('image/')) {
+        errors['appearance'] = 'File appearance harus berupa gambar'
+      } else {
+        documents.appearance = {
+          fileName: rawAppearance.fileName,
+          storedName: rawAppearance.storedName,
+          mime: rawAppearance.mime,
+          size: rawAppearance.size,
+          uploadedAt: rawAppearance.uploadedAt ?? new Date().toISOString(),
         }
-      } catch (err) {
-        errors.appearance = err.message
       }
     }
 
     // PPAP: payload berisi daftar lengkap yang diinginkan.
     // - File dengan storedName = sudah tersimpan di server, pertahankan
-    // - File dengan dataUrl = file baru, simpan
+    // - File baru = metadata dari direct upload
     // Jika payload.ppap hadir (walau empty array), replace seluruh ppap list.
     if (Array.isArray(rawPpap)) {
       const resolved = []
@@ -380,10 +383,18 @@ export async function updateFsa(fsaId, payload, actor) {
         if (f.storedName) {
           // Existing file – cari di dokumen lama dan pertahankan
           const existing = fsa.documents.ppap.find((p) => p.storedName === f.storedName)
-          if (existing) resolved.push(existing)
-        } else if (f.dataUrl) {
-          // File baru – simpan
-          resolved.push(await storeUpload({ fsaId, ...f }))
+          if (existing) {
+            resolved.push(existing)
+          } else {
+            // File baru yang sudah diupload langsung ke Storage
+            resolved.push({
+              fileName: f.fileName,
+              storedName: f.storedName,
+              mime: f.mime,
+              size: f.size,
+              uploadedAt: f.uploadedAt ?? new Date().toISOString(),
+            })
+          }
         }
       }
       if (resolved.length > MAX_FILES) {
@@ -538,7 +549,7 @@ export async function createFsa(payload, actor) {
 
   let documents = { appearance: null, ppap: [] }
   try {
-    documents = await normalizeDocuments(payload?.documents, fsaId, errors)
+    documents = normalizeDocuments(payload?.documents, errors)
   } catch (error) {
     errors.documents = error.message
   }

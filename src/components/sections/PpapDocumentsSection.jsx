@@ -1,8 +1,9 @@
 import { useRef, useState } from 'react'
 import { Field, SectionCard } from '../ui.jsx'
 import { formatBytes } from '../../lib/format.js'
-import { isImage, MAX_FILE_SIZE, MAX_PPAP_FILES, readFileAsDataUrl } from '../../lib/validation.js'
+import { isImage, MAX_FILE_SIZE, MAX_PPAP_FILES } from '../../lib/validation.js'
 import { compressImage } from '../../lib/image.js'
+import { uploadToStorage } from '../../lib/api.js'
 
 function UploadButton({ accept, multiple, onPick, disabled, label }) {
   const inputRef = useRef(null)
@@ -50,9 +51,10 @@ function FileRow({ file, onRemove }) {
   )
 }
 
-export default function PpapDocumentsSection({ form, errors, onChange }) {
+export default function PpapDocumentsSection({ form, errors, onChange, fsaId }) {
   const { documents } = form
   const [localError, setLocalError] = useState('')
+  const [uploading, setUploading] = useState(false)
 
   const setDocuments = (next) => onChange({ ...documents, ...next })
 
@@ -70,12 +72,15 @@ export default function PpapDocumentsSection({ form, errors, onChange }) {
       return
     }
 
+    setUploading(true)
     try {
       const compressed = await compressImage(file)
-      const payload = await readFileAsDataUrl(compressed)
-      setDocuments({ appearance: { ...payload, size: compressed.size, localPreview: URL.createObjectURL(compressed) } })
+      const meta = await uploadToStorage(compressed, fsaId)
+      setDocuments({ appearance: { ...meta, localPreview: URL.createObjectURL(compressed) } })
     } catch (err) {
       setLocalError(err.message)
+    } finally {
+      setUploading(false)
     }
   }
 
@@ -92,22 +97,26 @@ export default function PpapDocumentsSection({ form, errors, onChange }) {
       return
     }
 
+    setUploading(true)
     try {
-      const payloads = await Promise.all(
+      const metas = await Promise.all(
         files.map(async (file) => {
           const compressed = file.type.startsWith('image/') ? await compressImage(file) : file
-          return { ...(await readFileAsDataUrl(compressed)), size: compressed.size }
+          return uploadToStorage(compressed, fsaId)
         }),
       )
-      setDocuments({ ppap: [...documents.ppap, ...payloads] })
+      setDocuments({ ppap: [...documents.ppap, ...metas] })
     } catch (err) {
       setLocalError(err.message)
+    } finally {
+      setUploading(false)
     }
   }
 
   return (
     <SectionCard step="2" title="PPAP Documents" description="Upload dokumentasi pendukung Parts Production Approval Process.">
       {localError ? <p className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">{localError}</p> : null}
+      {uploading ? <p className="mb-4 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-medium text-sky-700">Mengunggah file...</p> : null}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Field label="Appearance" required error={errors.appearance} hint="Upload 1 foto part (maks 10 MB)">
@@ -116,11 +125,11 @@ export default function PpapDocumentsSection({ form, errors, onChange }) {
               accept="image/*"
               label={documents.appearance ? 'Ganti foto' : 'Upload foto'}
               onPick={handleAppearance}
+              disabled={uploading}
             />
             {documents.appearance ? (
               <ul className="space-y-2">
                 {documents.appearance._existing ? (
-                  // File sudah tersimpan di server – tampilkan placeholder
                   <li className="overflow-hidden rounded-lg border border-slate-200 bg-slate-100 px-4 py-6 text-center text-sm text-slate-500">
                     📷 {documents.appearance.fileName}
                     <span className="ml-2 text-xs text-slate-400">(file tersimpan di server)</span>
@@ -128,7 +137,7 @@ export default function PpapDocumentsSection({ form, errors, onChange }) {
                 ) : (
                   <li className="overflow-hidden rounded-lg border border-slate-200">
                     <img
-                      src={documents.appearance.localPreview ?? documents.appearance.dataUrl ?? ''}
+                      src={documents.appearance.localPreview ?? ''}
                       alt="Preview appearance"
                       className="h-40 w-full object-cover"
                     />
@@ -153,7 +162,7 @@ export default function PpapDocumentsSection({ form, errors, onChange }) {
             <UploadButton
               accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.zip"
               multiple
-              disabled={documents.ppap.length >= MAX_PPAP_FILES}
+              disabled={documents.ppap.length >= MAX_PPAP_FILES || uploading}
               label="Upload file PPAP"
               onPick={handlePpap}
             />
@@ -161,7 +170,7 @@ export default function PpapDocumentsSection({ form, errors, onChange }) {
               <ul className="space-y-2">
                 {documents.ppap.map((file, index) => (
                   <FileRow
-                    key={`${file.fileName}-${index}`}
+                    key={`${file.storedName}-${index}`}
                     file={file}
                     onRemove={() => setDocuments({ ppap: documents.ppap.filter((_, i) => i !== index) })}
                   />

@@ -60,6 +60,30 @@ export const api = {
   updateFsa: (id, payload) => request(`/api/fsa/${id}`, { method: 'PATCH', body: payload }),
   updateDecision: (id, key, payload) => request(`/api/fsa/${id}/decision/${key}`, { method: 'PATCH', body: payload }),
   downloadUrl: (storedName) => `/api/files/${storedName}`,
+  signUpload: (fileName, mime, fsaId) =>
+    request('/api/uploads/sign', { method: 'POST', body: { fileName, mime, fsaId } }),
+}
+
+export async function uploadToStorage(file, fsaId) {
+  const { uploadUrl, storedName, fileName, mime } = await api.signUpload(file.name, file.type, fsaId)
+
+  const response = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': file.type },
+    body: file,
+  })
+
+  if (!response.ok) {
+    throw new Error('Gagal mengunggah file ke storage')
+  }
+
+  return {
+    fileName,
+    storedName,
+    mime,
+    size: file.size,
+    uploadedAt: new Date().toISOString(),
+  }
 }
 
 export async function downloadFile(file) {
