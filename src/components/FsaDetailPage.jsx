@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { api, downloadFile } from '../lib/api.js'
-import { Alert, Button, Card, DetailRow, SectionCard, Spinner, Toast } from './ui.jsx'
+import { Alert, Button, Card, DetailRow, SectionCard, Select, Field, Spinner, Toast } from './ui.jsx'
 import GeneralInformationSection from './sections/GeneralInformationSection.jsx'
 import CrossFunctionalApprovalSection from './sections/CrossFunctionalApprovalSection.jsx'
 import { assignedActionableKeys } from '../lib/fsaForm.js'
@@ -36,6 +36,9 @@ export default function FsaDetailPage({ reference, onBack, onEdit }) {
   const [error, setError] = useState('')
   const [toast, setToast] = useState(null)
   const [busyKey, setBusyKey] = useState(null)
+  const [stepIndex, setStepIndex] = useState(0)
+
+  const DETAIL_STEPS = ['FSA General Information', 'FSA Documents', 'Document Review Checklist', 'Cross Functional Requirement']
 
   useEffect(() => {
     if (!toast) return
@@ -119,12 +122,41 @@ export default function FsaDetailPage({ reference, onBack, onEdit }) {
               ✏️ Edit untuk Rework
             </Button>
           ) : null}
-          <span className={badgeClass(fsa.approvalStatus)}>{findName(reference.fsaStatuses, fsa.approvalStatus)}</span>
+          <span className={badgeClass(fsa.approvalStatus, 'lg')}>{findName(reference.fsaStatuses, fsa.approvalStatus)}</span>
         </div>
       </header>
 
       {error ? <Alert>{error}</Alert> : null}
 
+      <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+        <ol className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          {DETAIL_STEPS.map((label, index) => {
+            const activeStep = index === stepIndex
+            return (
+              <li key={label}>
+                <button
+                  type="button"
+                  onClick={() => setStepIndex(index)}
+                  className={`flex w-full flex-row items-center justify-center gap-2 rounded-xl border px-2 py-3 text-center transition ${
+                    activeStep ? 'border-sky-600 bg-sky-50' : 'border-slate-200 bg-slate-50 hover:bg-slate-100'
+                  }`}
+                >
+                  <span
+                    className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold ${
+                      activeStep ? 'bg-sky-600 text-white' : 'bg-slate-200 text-slate-500'
+                    }`}
+                  >
+                    {index + 1}
+                  </span>
+                  <span className={`text-xs font-medium ${activeStep ? 'text-sky-700' : 'text-slate-500'}`}>{label}</span>
+                </button>
+              </li>
+            )
+          })}
+        </ol>
+      </div>
+
+      {stepIndex === 0 ? (
       <GeneralInformationSection
         form={{
           general: {
@@ -152,7 +184,9 @@ export default function FsaDetailPage({ reference, onBack, onEdit }) {
         onChange={() => {}}
         readOnly
       />
+      ) : null}
 
+      {stepIndex === 1 ? (
       <SectionCard step="2" title="FSA Documents">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div>
@@ -184,17 +218,27 @@ export default function FsaDetailPage({ reference, onBack, onEdit }) {
           </div>
         </div>
       </SectionCard>
+      ) : null}
 
+      {stepIndex === 2 ? (
       <SectionCard step="3" title="Document Review Checklist">
-        <Card>
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           {Object.entries(CHECKLIST_LABELS).map(([key, label]) => (
-            <DetailRow key={key} label={label}>
-              <span className={badgeClass(fsa.checklist[key])}>{findName(reference.checklistStatuses, fsa.checklist[key])}</span>
-            </DetailRow>
+            <Field key={key} label={label}>
+              <Select value={fsa.checklist[key]} disabled>
+                {reference.checklistStatuses.map((status) => (
+                  <option key={status.id} value={status.id}>
+                    {status.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
           ))}
-        </Card>
+        </div>
       </SectionCard>
+      ) : null}
 
+      {stepIndex === 3 ? (
       <CrossFunctionalApprovalSection
         form={{ approvals: fsa.approvals }}
         errors={{}}
@@ -205,6 +249,8 @@ export default function FsaDetailPage({ reference, onBack, onEdit }) {
         busyKey={busyKey}
         onDecide={handleDecide}
       />
+      ) : null}
+
       {toast ? (
         <Toast tone={toast.tone} onClose={() => setToast(null)}>
           {toast.message}

@@ -8,6 +8,7 @@ import DocumentReviewChecklistSection from './sections/DocumentReviewChecklistSe
 import CrossFunctionalApprovalSection from './sections/CrossFunctionalApprovalSection.jsx'
 import { APPROVAL_ORDER } from '../lib/fsaForm.js'
 import { validateForm } from '../lib/validation.js'
+import { STEPS, isStepError } from './FsaCreatePage.jsx'
 import { toLocalInputValue } from '../lib/format.js'
 
 /**
@@ -70,6 +71,7 @@ export default function FsaEditPage({ reference, user, onCancel, onSaved }) {
   const [errors, setErrors] = useState({})
   const [submitError, setSubmitError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [stepIndex, setStepIndex] = useState(0)
 
   useEffect(() => {
     let active = true
@@ -119,6 +121,67 @@ export default function FsaEditPage({ reference, user, onCancel, onSaved }) {
   }
 
   const setGeneral = (general) => setForm((current) => ({ ...current, general }))
+
+  function validateCurrentForm() {
+    return validateForm(
+      {
+        ...form,
+        documents: {
+          appearance: form.documents.appearance,
+          ppap: form.documents.ppap,
+        },
+      },
+      reference.users,
+    )
+  }
+
+  function stepErrors(stepId) {
+    const all = validateCurrentForm()
+    return Object.fromEntries(Object.entries(all).filter(([key]) => isStepError(key, stepId)))
+  }
+
+  function goNext() {
+    const current = STEPS[stepIndex]
+    const stepErrorMap = stepErrors(current.id)
+    if (Object.keys(stepErrorMap).length > 0) {
+      setErrors((prev) => ({ ...prev, ...stepErrorMap }))
+      setSubmitError(`Periksa kembali data pada ${current.label} yang ditandai merah.`)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
+    setSubmitError('')
+    setStepIndex((index) => Math.min(index + 1, STEPS.length - 1))
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function goBack() {
+    setSubmitError('')
+    setStepIndex((index) => Math.max(index - 1, 0))
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function goToStep(index) {
+    if (index === stepIndex) return
+    if (index < stepIndex) {
+      setSubmitError('')
+      setStepIndex(index)
+      return
+    }
+    for (let i = 0; i < index; i += 1) {
+      const stepErrorMap = stepErrors(STEPS[i].id)
+      if (Object.keys(stepErrorMap).length > 0) {
+        setErrors((prev) => ({ ...prev, ...stepErrorMap }))
+        setSubmitError(`Periksa kembali data pada ${STEPS[i].label} yang ditandai merah.`)
+        setStepIndex(i)
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+        return
+      }
+    }
+    setSubmitError('')
+    setStepIndex(index)
+  }
+
+  const isLastStep = stepIndex === STEPS.length - 1
 
   async function handleSubmit(event) {
     event.preventDefault()
@@ -214,33 +277,82 @@ export default function FsaEditPage({ reference, user, onCancel, onSaved }) {
 
       {submitError ? <Alert>{submitError}</Alert> : null}
 
+      <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+        <ol className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          {STEPS.map((step, index) => {
+            const done = index < stepIndex
+            const activeStep = index === stepIndex
+            return (
+              <li key={step.id}>
+                <button
+                  type="button"
+                  onClick={() => goToStep(index)}
+                  className={`flex w-full flex-row items-center justify-center gap-2 rounded-xl border px-2 py-3 text-center transition ${
+                    activeStep
+                      ? 'border-sky-600 bg-sky-50'
+                      : done
+                        ? 'border-emerald-200 bg-emerald-50 hover:bg-emerald-100'
+                        : 'border-slate-200 bg-slate-50 hover:bg-slate-100'
+                  }`}
+                >
+                  <span
+                    className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition ${
+                      done ? 'bg-emerald-500 text-white' : activeStep ? 'bg-sky-600 text-white' : 'bg-slate-200 text-slate-500'
+                    }`}
+                  >
+                    {done ? (
+                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="m5 12 5 5L20 7" />
+                      </svg>
+                    ) : (
+                      index + 1
+                    )}
+                  </span>
+                  <span className={`text-xs font-medium ${activeStep ? 'text-sky-700' : done ? 'text-emerald-700' : 'text-slate-500'}`}>
+                    {step.label}
+                  </span>
+                </button>
+              </li>
+            )
+          })}
+        </ol>
+      </div>
+
+      {stepIndex === 0 ? (
       <GeneralInformationSection
         form={form}
         errors={errors}
         reference={reference}
         onChange={setGeneral}
       />
+      ) : null}
 
+      {stepIndex === 1 ? (
       <PpapDocumentsSection
         form={form}
         errors={errors}
         fsaId={id}
         onChange={(documents) => setForm((current) => ({ ...current, documents }))}
       />
+      ) : null}
 
+      {stepIndex === 2 ? (
       <DocumentReviewChecklistSection
         form={form}
         errors={errors}
         reference={reference}
         onChange={(checklist) => setForm((current) => ({ ...current, checklist }))}
       />
+      ) : null}
 
+      {stepIndex === 3 ? (
       <CrossFunctionalApprovalSection
         form={form}
         errors={errors}
         reference={reference}
         onChange={(approvals) => setForm((current) => ({ ...current, approvals }))}
       />
+      ) : null}
 
       <footer className="sticky bottom-0 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-lg sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs text-slate-500">
@@ -251,9 +363,20 @@ export default function FsaEditPage({ reference, user, onCancel, onSaved }) {
           <Button type="button" variant="secondary" onClick={onCancel}>
             Batal
           </Button>
-          <Button type="submit" disabled={busy}>
-            {busy ? 'Menyimpan...' : 'Simpan & Resubmit FSA'}
-          </Button>
+          {stepIndex > 0 ? (
+            <Button type="button" variant="secondary" onClick={goBack}>
+              Kembali
+            </Button>
+          ) : null}
+          {isLastStep ? (
+            <Button type="submit" disabled={busy}>
+              {busy ? 'Menyimpan...' : 'Simpan & Resubmit FSA'}
+            </Button>
+          ) : (
+            <Button type="button" onClick={goNext}>
+              Lanjut
+            </Button>
+          )}
         </div>
       </footer>
     </form>

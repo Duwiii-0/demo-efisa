@@ -41,12 +41,20 @@ export default function CrossFunctionalApprovalSection({
               <div
                 key={key}
                 className={`rounded-xl border bg-white px-4 py-4 ${
-                  actionable ? 'border-sky-300 ring-1 ring-sky-100' : 'border-slate-200'
+                  actionable
+                    ? 'border-sky-300 ring-1 ring-sky-100'
+                    : approval.decision === 'approved'
+                      ? 'border-emerald-300 ring-1 ring-emerald-100'
+                      : approval.decision === 'rework'
+                        ? 'border-amber-300 ring-1 ring-amber-100'
+                        : approval.decision === 'rejected'
+                          ? 'border-rose-300 ring-1 ring-rose-100'
+                          : 'border-slate-200'
                 }`}
               >
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <p className="text-sm font-semibold text-slate-900">{meta.label}</p>
-                  <span className={badgeClass(approval.decision)}>{findName(DECISION_OPTIONS, approval.decision)}</span>
+                  <span className={badgeClass(approval.decision, 'lg')}>{findName(DECISION_OPTIONS, approval.decision)}</span>
                 </div>
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                   <Field label="Nama">

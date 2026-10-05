@@ -14,8 +14,10 @@ export const STATUS_STYLES = {
   pending: 'bg-slate-400/20 text-slate-600',
 }
 
-export const badgeClass = (id) =>
-  `inline-flex items-center rounded-md border border-white/60 px-2 py-0.5 text-[11px] font-medium backdrop-blur-md shadow-sm ${STATUS_STYLES[id] ?? STATUS_STYLES.pending}`
+export const badgeClass = (id, size = 'sm') =>
+  `inline-flex items-center rounded-md border border-white/60 shadow-sm backdrop-blur-md ${
+    size === 'lg' ? 'px-3 py-1 text-sm font-semibold' : 'px-2 py-0.5 text-[11px] font-medium'
+  } ${STATUS_STYLES[id] ?? STATUS_STYLES.pending}`
 
 export const findName = (list, id, key = 'name') => list.find((item) => item.id === id)?.[key] ?? '-'
 

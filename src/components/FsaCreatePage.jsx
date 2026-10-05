@@ -9,14 +9,14 @@ import { emptyFsaForm } from '../lib/fsaForm.js'
 import { validateForm } from '../lib/validation.js'
 import { toLocalInputValue, todayInputValue } from '../lib/format.js'
 
-const STEPS = [
+export const STEPS = [
   { id: 'general', label: 'General Information' },
   { id: 'documents', label: 'FSA Documents' },
   { id: 'checklist', label: 'Document Review Checklist' },
   { id: 'approvals', label: 'Cross Functional Requirement' },
 ]
 
-function isStepError(key, stepId) {
+export function isStepError(key, stepId) {
   if (stepId === 'general') {
     return !key.startsWith('approvals.') && key !== 'appearance' && !key.startsWith('documents.') && !key.startsWith('checklist.')
   }
@@ -201,7 +201,7 @@ export default function FsaCreatePage({ reference, user, onCancel, onCreated }) 
                   }`}
                 >
                   <span
-                    className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold transition ${
+                    className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition ${
                       done
                         ? 'bg-emerald-500 text-white'
                         : activeStep
@@ -210,7 +210,7 @@ export default function FsaCreatePage({ reference, user, onCancel, onCreated }) 
                     }`}
                   >
                     {done ? (
-                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <path d="m5 12 5 5L20 7" />
                       </svg>
                     ) : (
