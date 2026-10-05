@@ -108,6 +108,37 @@ function AppRoutes() {
             <FsaListPage
               reference={reference}
               canCreate={session.user.role === 'procurement'}
+              view="assigned"
+              onCreate={() => navigate('/create')}
+              onOpenDetail={(id) => {
+                setFlash('')
+                navigate(`/fsa/${id}`)
+              }}
+            />
+          }
+        />
+        <Route
+          path="/in-progress"
+          element={
+            <FsaListPage
+              reference={reference}
+              canCreate={session.user.role === 'procurement'}
+              view="in-progress"
+              onCreate={() => navigate('/create')}
+              onOpenDetail={(id) => {
+                setFlash('')
+                navigate(`/fsa/${id}`)
+              }}
+            />
+          }
+        />
+        <Route
+          path="/history"
+          element={
+            <FsaListPage
+              reference={reference}
+              canCreate={session.user.role === 'procurement'}
+              view="history"
               onCreate={() => navigate('/create')}
               onOpenDetail={(id) => {
                 setFlash('')

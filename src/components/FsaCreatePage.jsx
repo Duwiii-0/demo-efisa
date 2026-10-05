@@ -9,12 +9,30 @@ import { emptyFsaForm } from '../lib/fsaForm.js'
 import { validateForm } from '../lib/validation.js'
 import { toLocalInputValue, todayInputValue } from '../lib/format.js'
 
+const STEPS = [
+  { id: 'general', label: 'General Information' },
+  { id: 'documents', label: 'PPAP Documents' },
+  { id: 'checklist', label: 'Document Review Checklist' },
+  { id: 'approvals', label: 'Cross Functional Requirement' },
+]
+
+function isStepError(key, stepId) {
+  if (stepId === 'general') {
+    return !key.startsWith('approvals.') && key !== 'appearance' && !key.startsWith('documents.') && !key.startsWith('checklist.')
+  }
+  if (stepId === 'documents') return key === 'appearance' || key.startsWith('documents.')
+  if (stepId === 'checklist') return key.startsWith('checklist.')
+  if (stepId === 'approvals') return key.startsWith('approvals.')
+  return false
+}
+
 export default function FsaCreatePage({ reference, user, onCancel, onCreated }) {
   const [form, setForm] = useState(() => emptyFsaForm())
   const [errors, setErrors] = useState({})
   const [submitError, setSubmitError] = useState('')
   const [busy, setBusy] = useState(false)
   const [fsaId] = useState(() => crypto.randomUUID())
+  const [stepIndex, setStepIndex] = useState(0)
 
   useEffect(() => {
     let active = true
@@ -99,53 +117,154 @@ export default function FsaCreatePage({ reference, user, onCancel, onCreated }) 
     }
   }
 
+  function stepErrors(stepId) {
+    const all = validateForm(form, reference.users)
+    return Object.fromEntries(Object.entries(all).filter(([key]) => isStepError(key, stepId)))
+  }
+
+  function goNext() {
+    const current = STEPS[stepIndex]
+    const stepErrorMap = stepErrors(current.id)
+    if (Object.keys(stepErrorMap).length > 0) {
+      setErrors((prev) => ({ ...prev, ...stepErrorMap }))
+      setSubmitError(`Periksa kembali data pada ${current.label} yang ditandai merah.`)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
+    setSubmitError('')
+    setStepIndex((index) => Math.min(index + 1, STEPS.length - 1))
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function goBack() {
+    setSubmitError('')
+    setStepIndex((index) => Math.max(index - 1, 0))
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function goToStep(index) {
+    if (index === stepIndex) return
+    if (index < stepIndex) {
+      setSubmitError('')
+      setStepIndex(index)
+      return
+    }
+    for (let i = 0; i < index; i += 1) {
+      const stepErrorMap = stepErrors(STEPS[i].id)
+      if (Object.keys(stepErrorMap).length > 0) {
+        setErrors((prev) => ({ ...prev, ...stepErrorMap }))
+        setSubmitError(`Periksa kembali data pada ${STEPS[i].label} yang ditandai merah.`)
+        setStepIndex(i)
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+        return
+      }
+    }
+    setSubmitError('')
+    setStepIndex(index)
+  }
+
+  const isLastStep = stepIndex === STEPS.length - 1
+
   return (
     <form onSubmit={handleSubmit} className="mx-auto max-w-[1600px] space-y-6">
-      <header className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-slate-900">Create New FSA</h1>
-          <p className="text-sm text-slate-500">Lengkapi 4 section berikut untuk membuat First Sample Inspection.</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="text-right">
-            <p className="text-xs font-medium text-slate-500">Kelengkapan data</p>
-            <p className="text-lg font-semibold text-sky-700">{completion}%</p>
+      <header className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm space-y-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-xl font-semibold text-slate-900">Create New FSA</h1>
+            <p className="text-sm text-slate-500">Lengkapi 4 section berikut untuk membuat First Sample Inspection.</p>
           </div>
-          <div className="h-2 w-32 overflow-hidden rounded-full bg-slate-200">
-            <div className="h-full rounded-full bg-sky-600 transition-all" style={{ width: `${completion}%` }} />
+          <div className="flex items-center gap-4">
+            <div className="text-right">
+              <p className="text-xs font-medium text-slate-500">Kelengkapan data</p>
+              <p className="text-lg font-semibold text-sky-700">{completion}%</p>
+            </div>
+            <div className="h-2 w-32 overflow-hidden rounded-full bg-slate-200">
+              <div className="h-full rounded-full bg-sky-600 transition-all" style={{ width: `${completion}%` }} />
+            </div>
           </div>
         </div>
+
+        <ol className="grid grid-cols-4 gap-3">
+          {STEPS.map((step, index) => {
+            const done = index < stepIndex
+            const activeStep = index === stepIndex
+            return (
+              <li key={step.id}>
+                <button
+                  type="button"
+                  onClick={() => goToStep(index)}
+                  className={`flex w-full flex-row items-center justify-center gap-2 rounded-xl border px-2 py-3 text-center transition ${
+                    activeStep
+                      ? 'border-sky-600 bg-sky-50'
+                      : done
+                        ? 'border-emerald-200 bg-emerald-50 hover:bg-emerald-100'
+                        : 'border-slate-200 bg-slate-50 hover:bg-slate-100'
+                  }`}
+                >
+                  <span
+                    className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold transition ${
+                      done
+                        ? 'bg-emerald-500 text-white'
+                        : activeStep
+                          ? 'bg-sky-600 text-white'
+                          : 'bg-slate-200 text-slate-500'
+                    }`}
+                  >
+                    {done ? (
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="m5 12 5 5L20 7" />
+                      </svg>
+                    ) : (
+                      index + 1
+                    )}
+                  </span>
+                  <span className={`text-xs font-medium ${activeStep ? 'text-sky-700' : done ? 'text-emerald-700' : 'text-slate-500'}`}>
+                    {step.label}
+                  </span>
+                </button>
+              </li>
+            )
+          })}
+        </ol>
       </header>
 
       {submitError ? <Alert>{submitError}</Alert> : null}
 
-      <GeneralInformationSection
-        form={form}
-        errors={errors}
-        reference={reference}
-        onChange={setGeneral}
-      />
+      {stepIndex === 0 ? (
+        <GeneralInformationSection
+          form={form}
+          errors={errors}
+          reference={reference}
+          onChange={setGeneral}
+        />
+      ) : null}
 
-      <PpapDocumentsSection
-        form={form}
-        errors={errors}
-        fsaId={fsaId}
-        onChange={(documents) => setForm((current) => ({ ...current, documents }))}
-      />
+      {stepIndex === 1 ? (
+        <PpapDocumentsSection
+          form={form}
+          errors={errors}
+          fsaId={fsaId}
+          onChange={(documents) => setForm((current) => ({ ...current, documents }))}
+        />
+      ) : null}
 
-      <DocumentReviewChecklistSection
-        form={form}
-        errors={errors}
-        reference={reference}
-        onChange={(checklist) => setForm((current) => ({ ...current, checklist }))}
-      />
+      {stepIndex === 2 ? (
+        <DocumentReviewChecklistSection
+          form={form}
+          errors={errors}
+          reference={reference}
+          onChange={(checklist) => setForm((current) => ({ ...current, checklist }))}
+        />
+      ) : null}
 
-      <CrossFunctionalApprovalSection
-        form={form}
-        errors={errors}
-        reference={reference}
-        onChange={(approvals) => setForm((current) => ({ ...current, approvals }))}
-      />
+      {stepIndex === 3 ? (
+        <CrossFunctionalApprovalSection
+          form={form}
+          errors={errors}
+          reference={reference}
+          onChange={(approvals) => setForm((current) => ({ ...current, approvals }))}
+        />
+      ) : null}
 
       <footer className="sticky bottom-0 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-lg sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs text-slate-500">
@@ -155,9 +274,20 @@ export default function FsaCreatePage({ reference, user, onCancel, onCreated }) 
           <Button type="button" variant="secondary" onClick={onCancel}>
             Batal
           </Button>
-          <Button type="submit" disabled={busy}>
-            {busy ? 'Menyimpan...' : 'Submit FSA'}
-          </Button>
+          {stepIndex > 0 ? (
+            <Button type="button" variant="secondary" onClick={goBack}>
+              Kembali
+            </Button>
+          ) : null}
+          {isLastStep ? (
+            <Button type="submit" disabled={busy}>
+              {busy ? 'Menyimpan...' : 'Submit FSA'}
+            </Button>
+          ) : (
+            <Button type="button" onClick={goNext}>
+              Lanjut
+            </Button>
+          )}
         </div>
       </footer>
     </form>

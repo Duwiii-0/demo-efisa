@@ -52,12 +52,13 @@ function FsaTable({ items, reference, onOpenDetail, emptyText }) {
   )
 }
 
-export default function FsaListPage({ reference, onOpenDetail, onCreate, canCreate }) {
+export default function FsaListPage({ reference, onOpenDetail, onCreate, canCreate, view = 'assigned' }) {
   const [items, setItems] = useState(null)
   const [error, setError] = useState('')
-  const [filters, setFilters] = useState({ search: '', status: '', supplierId: '', reasonId: '' })
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
+  const [sortOrder, setSortOrder] = useState('latest')
   const me = reference.me
-  const hasActiveFilter = Boolean(filters.search.trim() || filters.status || filters.supplierId || filters.reasonId)
 
   useEffect(() => {
     let active = true
@@ -83,29 +84,56 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, canCrea
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
   }, [items, me])
 
-  const filtered = useMemo(() => {
+  const inProgress = useMemo(() => {
     if (!items) return null
-    const keyword = filters.search.trim().toLowerCase()
     return items
+      .filter((fsa) => !['accepted', 'canceled'].includes(fsa.approvalStatus))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+  }, [items])
+
+  const history = useMemo(() => {
+    if (!items) return null
+    return items
+      .filter((fsa) => ['accepted', 'canceled'].includes(fsa.approvalStatus))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+  }, [items])
+
+  const titles = {
+    assigned: ['PPAP Assigned to You', 'PPAP yang membutuhkan tindakan Anda.'],
+    'in-progress': ['PPAP In Progress', 'PPAP yang sedang dalam proses approval.'],
+    history: ['PPAP History', 'PPAP yang sudah selesai atau dibatalkan.'],
+  }
+  const [title, subtitle] = titles[view] ?? titles.assigned
+
+  const baseList = view === 'assigned' ? assigned : view === 'in-progress' ? inProgress : history
+
+  const viewStatusOptions = useMemo(() => {
+    if (!baseList) return []
+    const ids = [...new Set(baseList.map((fsa) => fsa.approvalStatus))]
+    return reference.fsaStatuses.filter((status) => ids.includes(status.id))
+  }, [baseList, reference.fsaStatuses])
+
+  const visible = useMemo(() => {
+    if (!baseList) return null
+    const keyword = search.trim().toLowerCase()
+    return baseList
       .filter((fsa) => {
-        if (filters.status && fsa.approvalStatus !== filters.status) return false
-        if (filters.supplierId && fsa.supplierId !== filters.supplierId) return false
-        if (filters.reasonId && fsa.reasonId !== filters.reasonId) return false
+        if (statusFilter && fsa.approvalStatus !== statusFilter) return false
         if (keyword) {
-          const haystack = `${fsa.fsaNumber} ${fsa.partNumber} ${fsa.materialDescription}`.toLowerCase()
+          const haystack = `${fsa.fsaNumber} ${fsa.partNumber} ${fsa.materialDescription} ${findName(reference.suppliers, fsa.supplierId)}`.toLowerCase()
           if (!haystack.includes(keyword)) return false
         }
         return true
       })
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-  }, [items, filters])
+      .sort((a, b) => (sortOrder === 'latest' ? b.createdAt.localeCompare(a.createdAt) : a.createdAt.localeCompare(b.createdAt)))
+  }, [baseList, search, statusFilter, sortOrder, reference.suppliers])
 
   return (
-    <div className="mx-auto max-w-[1600px] space-y-5">
+    <div className="space-y-5">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">FSA List</h1>
-          <p className="text-sm text-slate-500">Daftar First Sample Inspection yang tercatat.</p>
+          <h1 className="text-xl font-semibold text-slate-900">{title}</h1>
+          <p className="text-sm text-slate-500">{subtitle}</p>
         </div>
         {canCreate ? (
           <Button onClick={onCreate}>+ Create FSA</Button>
@@ -114,98 +142,64 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, canCrea
 
       {error ? <Alert>{error}</Alert> : null}
 
-      <section className="space-y-3">
-        <div>
-          <h2 className="text-base font-semibold text-slate-900">
-            {assigned !== null ? `${assigned.length} PPAP Assigned to You` : 'PPAP Assigned to You'}
-          </h2>
-          <p className="text-sm text-slate-500">PPAP yang membutuhkan tindakan Anda.</p>
-        </div>
-        {!assigned ? (
-          <Spinner />
-        ) : (
-          <FsaTable
-            items={assigned}
-            reference={reference}
-            onOpenDetail={onOpenDetail}
-            emptyText="Tidak ada PPAP yang ditugaskan ke Anda."
+      <Card className="p-2">
+        <div className="flex flex-col gap-2.5 p-3 sm:flex-row sm:items-center">
+          <input
+            className="min-w-0 flex-[2] rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+            placeholder="Cari FSA number / part number / material / supplier..."
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
           />
-        )}
-      </section>
-
-      <section className="space-y-3">
-        <div>
-          <h2 className="text-base font-semibold text-slate-900">All PPAP</h2>
-          <p className="text-sm text-slate-500">Seluruh PPAP yang tercatat di sistem.</p>
+          <select
+            className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+          >
+            <option value="">Semua status</option>
+            {viewStatusOptions.map((status) => (
+              <option key={status.id} value={status.id}>
+                {status.name}
+              </option>
+            ))}
+          </select>
+          <select
+            className="min-w-0 w-40 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+            value={sortOrder}
+            onChange={(event) => setSortOrder(event.target.value)}
+          >
+            <option value="latest">Terbaru</option>
+            <option value="earliest">Terlama</option>
+          </select>
+          {(search || statusFilter) ? (
+            <Button
+              variant="secondary"
+              className="shrink-0 whitespace-nowrap"
+              onClick={() => { setSearch(''); setStatusFilter('') }}
+            >
+              Reset
+            </Button>
+          ) : null}
         </div>
+      </Card>
 
-        <Card className="p-2">
-          <div className="flex flex-col gap-2.5 p-3 lg:flex-row lg:items-center">
-            <input
-              className="flex-[2] min-w-0 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
-              placeholder="Cari FSA number / part number..."
-              value={filters.search}
-              onChange={(event) => setFilters({ ...filters, search: event.target.value })}
-            />
-            <select
-              className="flex-1 min-w-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
-              value={filters.status}
-              onChange={(event) => setFilters({ ...filters, status: event.target.value })}
-            >
-              <option value="">Semua status</option>
-              {reference.fsaStatuses.map((status) => (
-                <option key={status.id} value={status.id}>
-                  {status.name}
-                </option>
-              ))}
-            </select>
-            <select
-              className="flex-1 min-w-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
-              value={filters.supplierId}
-              onChange={(event) => setFilters({ ...filters, supplierId: event.target.value })}
-            >
-              <option value="">Semua supplier</option>
-              {reference.suppliers.map((supplier) => (
-                <option key={supplier.id} value={supplier.id}>
-                  {supplier.name}
-                </option>
-              ))}
-            </select>
-            <select
-              className="flex-1 min-w-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
-              value={filters.reasonId}
-              onChange={(event) => setFilters({ ...filters, reasonId: event.target.value })}
-            >
-              <option value="">Semua reason</option>
-              {reference.reasons.map((reason) => (
-                <option key={reason.id} value={reason.id}>
-                  {reason.name}
-                </option>
-              ))}
-            </select>
-            {hasActiveFilter ? (
-              <Button
-                variant="secondary"
-                className="shrink-0 whitespace-nowrap"
-                onClick={() => setFilters({ search: '', status: '', supplierId: '', reasonId: '' })}
-              >
-                Reset
-              </Button>
-            ) : null}
-          </div>
-        </Card>
-
-        {!filtered ? (
-          <Spinner />
-        ) : (
-          <FsaTable
-            items={filtered}
-            reference={reference}
-            onOpenDetail={onOpenDetail}
-            emptyText="Belum ada data FSA."
-          />
-        )}
-      </section>
+      {!visible ? (
+        <Spinner />
+      ) : (
+        <FsaTable
+          items={visible}
+          reference={reference}
+          onOpenDetail={onOpenDetail}
+          emptyText={
+            baseList && baseList.length > 0
+              ? 'Tidak ada data yang cocok dengan filter.'
+              : view === 'assigned'
+                ? 'Tidak ada PPAP yang ditugaskan ke Anda.'
+                : view === 'in-progress'
+                  ? 'Tidak ada PPAP yang sedang berjalan.'
+                  : 'Belum ada riwayat PPAP.'
+          }
+        />
+      )}
     </div>
   )
 }

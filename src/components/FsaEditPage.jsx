@@ -86,17 +86,8 @@ export default function FsaEditPage({ reference, user, onCancel, onSaved }) {
     }
   }, [id])
 
-  if (!form) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center">
-        <Spinner />
-      </div>
-    )
-  }
-
-  const setGeneral = (general) => setForm((current) => ({ ...current, general }))
-
   const completion = useMemo(() => {
+    if (!form) return 0
     const total = 16
     let filled = 0
     const { general, documents } = form
@@ -118,6 +109,16 @@ export default function FsaEditPage({ reference, user, onCancel, onSaved }) {
     if (form.checklist.checkSheet !== 'not_available') filled += 1
     return Math.round((filled / total) * 100)
   }, [form])
+
+  if (!form) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <Spinner />
+      </div>
+    )
+  }
+
+  const setGeneral = (general) => setForm((current) => ({ ...current, general }))
 
   async function handleSubmit(event) {
     event.preventDefault()
