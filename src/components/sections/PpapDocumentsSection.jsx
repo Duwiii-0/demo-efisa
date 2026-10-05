@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { Field, SectionCard } from '../ui.jsx'
 import { formatBytes } from '../../lib/format.js'
-import { isImage, MAX_FILE_SIZE, MAX_PPAP_FILES } from '../../lib/validation.js'
+import { isImage, MAX_FILE_SIZE, MAX_FSA_FILES } from '../../lib/validation.js'
 import { compressImage } from '../../lib/image.js'
 import { uploadToStorage } from '../../lib/api.js'
 
@@ -86,8 +86,8 @@ export default function PpapDocumentsSection({ form, errors, onChange, fsaId }) 
 
   async function handlePpap(files) {
     setLocalError('')
-    if (documents.ppap.length + files.length > MAX_PPAP_FILES) {
-      setLocalError(`Maksimal ${MAX_PPAP_FILES} file PPAP`)
+    if (documents.ppap.length + files.length > MAX_FSA_FILES) {
+      setLocalError(`Maksimal ${MAX_FSA_FILES} file FSA`)
       return
     }
 
@@ -114,7 +114,7 @@ export default function PpapDocumentsSection({ form, errors, onChange, fsaId }) 
   }
 
   return (
-    <SectionCard step="2" title="PPAP Documents" description="Upload dokumentasi pendukung Parts Production Approval Process.">
+    <SectionCard step="2" title="FSA Documents" description="Upload dokumentasi pendukung Parts Production Approval Process.">
       {localError ? <p className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">{localError}</p> : null}
       {uploading ? <p className="mb-4 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-medium text-sky-700">Mengunggah file...</p> : null}
 
@@ -154,16 +154,16 @@ export default function PpapDocumentsSection({ form, errors, onChange, fsaId }) 
         </Field>
 
         <Field
-          label="PPAP Document"
-          hint={`Multiple file upload, maksimal ${MAX_PPAP_FILES} file`}
+          label="FSA Document"
+          hint={`Multiple file upload, maksimal ${MAX_FSA_FILES} file`}
           error={errors.ppapDocuments}
         >
           <div className="space-y-3">
             <UploadButton
               accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.zip"
               multiple
-              disabled={documents.ppap.length >= MAX_PPAP_FILES || uploading}
-              label="Upload file PPAP"
+              disabled={documents.ppap.length >= MAX_FSA_FILES || uploading}
+              label="Upload file FSA"
               onPick={handlePpap}
             />
             {documents.ppap.length ? (
@@ -178,7 +178,7 @@ export default function PpapDocumentsSection({ form, errors, onChange, fsaId }) 
               </ul>
             ) : (
               <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-4 text-sm text-slate-500">
-                Belum ada file PPAP. Upload antara lain dimensional report, material cert, test result.
+                Belum ada file FSA. Upload antara lain dimensional report, material cert, test result.
               </p>
             )}
           </div>

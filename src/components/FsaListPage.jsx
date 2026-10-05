@@ -101,9 +101,9 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, canCrea
   }, [items])
 
   const titles = {
-    assigned: ['PPAP Assigned to You', 'PPAP yang membutuhkan tindakan Anda.'],
-    'in-progress': ['PPAP In Progress', 'PPAP yang sedang dalam proses approval.'],
-    history: ['PPAP History', 'PPAP yang sudah selesai atau dibatalkan.'],
+    assigned: ['FSA Assigned to You', ''],
+    'in-progress': ['FSA In Progress', ''],
+    history: ['FSA History', ''],
   }
   const [title, subtitle] = titles[view] ?? titles.assigned
 
@@ -135,7 +135,7 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, canCrea
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-semibold text-slate-900">{title}</h1>
-          <p className="text-sm text-slate-500">{subtitle}</p>
+          {subtitle ? <p className="text-sm text-slate-500">{subtitle}</p> : null}
         </div>
         {canCreate ? (
           <Button onClick={onCreate}>+ Create FSA</Button>
@@ -195,10 +195,10 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, canCrea
             baseList && baseList.length > 0
               ? 'Tidak ada data yang cocok dengan filter.'
               : view === 'assigned'
-                ? 'Tidak ada PPAP yang ditugaskan ke Anda.'
+                ? 'Tidak ada FSA yang ditugaskan ke Anda.'
                 : view === 'in-progress'
-                  ? 'Tidak ada PPAP yang sedang berjalan.'
-                  : 'Belum ada riwayat PPAP.'
+                  ? 'Tidak ada FSA yang sedang berjalan.'
+                  : 'Belum ada riwayat FSA.'
           }
         />
       )}

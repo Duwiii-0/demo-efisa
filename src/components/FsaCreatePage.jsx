@@ -11,7 +11,7 @@ import { toLocalInputValue, todayInputValue } from '../lib/format.js'
 
 const STEPS = [
   { id: 'general', label: 'General Information' },
-  { id: 'documents', label: 'PPAP Documents' },
+  { id: 'documents', label: 'FSA Documents' },
   { id: 'checklist', label: 'Document Review Checklist' },
   { id: 'approvals', label: 'Cross Functional Requirement' },
 ]
@@ -171,7 +171,6 @@ export default function FsaCreatePage({ reference, user, onCancel, onCreated }) 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-xl font-semibold text-slate-900">Create New FSA</h1>
-            <p className="text-sm text-slate-500">Lengkapi 4 section berikut untuk membuat First Sample Inspection.</p>
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right">

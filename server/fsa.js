@@ -4,7 +4,7 @@ import {
   CHECKLIST_STATUSES,
   FSA_REASONS,
   PART_CATEGORIES,
-  PPAP_LEVELS,
+  FSA_LEVELS,
   SUPPLIERS,
 } from './seed.js'
 import { getDb, saveDb } from './db.js'
@@ -167,7 +167,7 @@ async function userExists(userId) {
 function normalizeDocuments(raw, errors) {
   const rawPpap = Array.isArray(raw?.ppap) ? raw.ppap : []
   if (rawPpap.length > MAX_FILES) {
-    errors['ppapDocuments'] = `Maksimal ${MAX_FILES} file PPAP`
+    errors['ppapDocuments'] = `Maksimal ${MAX_FILES} file FSA`
   }
 
   const appearance = raw?.appearance ?? null
@@ -287,8 +287,8 @@ export async function updateFsa(fsaId, payload, actor) {
   const errors = {}
   const body = payload?.general ?? {}
 
-  if (!PPAP_LEVELS.includes(Number(body.ppapLevel))) {
-    errors.ppapLevel = 'PPAP level harus 1 sampai 5'
+  if (!FSA_LEVELS.includes(Number(body.ppapLevel))) {
+    errors.ppapLevel = 'FSA level harus 1 sampai 5'
   }
 
   const partNumbers = String(body.partNumber ?? '')
@@ -373,7 +373,7 @@ export async function updateFsa(fsaId, payload, actor) {
       }
     }
 
-    // PPAP: payload berisi daftar lengkap yang diinginkan.
+    // FSA: payload berisi daftar lengkap yang diinginkan.
     // - File dengan storedName = sudah tersimpan di server, pertahankan
     // - File baru = metadata dari direct upload
     // Jika payload.ppap hadir (walau empty array), replace seluruh ppap list.
@@ -398,7 +398,7 @@ export async function updateFsa(fsaId, payload, actor) {
         }
       }
       if (resolved.length > MAX_FILES) {
-        errors['ppapDocuments'] = `Maksimal ${MAX_FILES} file PPAP`
+        errors['ppapDocuments'] = `Maksimal ${MAX_FILES} file FSA`
       } else {
         documents.ppap = resolved
       }
@@ -477,8 +477,8 @@ export async function createFsa(payload, actor) {
   // xx increment mulai 01 dalam 1 hari yang sama.
   const fsaNumber = await buildNextNumberStore()
 
-  if (!PPAP_LEVELS.includes(Number(body.ppapLevel))) {
-    errors.ppapLevel = 'PPAP level harus 1 sampai 5'
+  if (!FSA_LEVELS.includes(Number(body.ppapLevel))) {
+    errors.ppapLevel = 'FSA level harus 1 sampai 5'
   }
 
   const partNumbers = String(body.partNumber ?? '')

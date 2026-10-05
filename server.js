@@ -12,7 +12,7 @@ import {
   FSA_REASONS,
   FSA_STATUSES,
   PART_CATEGORIES,
-  PPAP_LEVELS,
+  FSA_LEVELS,
   ROLES,
   SUPPLIERS,
 } from './server/seed.js'
@@ -133,7 +133,7 @@ app.get('/api/reference', requireAuth, async (req, res, next) => {
       fsaStatuses: FSA_STATUSES,
       partCategories: PART_CATEGORIES,
       reasons: FSA_REASONS,
-      ppapLevels: PPAP_LEVELS,
+      ppapLevels: FSA_LEVELS,
       checklistStatuses: CHECKLIST_STATUSES,
       approvalDecisions: APPROVAL_DECISIONS,
       approvalFunctions: APPROVAL_FUNCTIONS,

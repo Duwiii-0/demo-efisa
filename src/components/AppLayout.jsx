@@ -6,9 +6,9 @@ const NAV_GROUPS = [
   {
     title: 'General',
     items: [
-      { to: '/', label: 'PPAP Assigned to You', end: true, icon: 'inbox' },
-      { to: '/in-progress', label: 'PPAP In Progress', icon: 'clock' },
-      { to: '/history', label: 'PPAP History', icon: 'archive' },
+      { to: '/', label: 'FSA Assigned to You', end: true, icon: 'inbox' },
+      { to: '/in-progress', label: 'FSA In Progress', icon: 'clock' },
+      { to: '/history', label: 'FSA History', icon: 'archive' },
     ],
   },
 ]

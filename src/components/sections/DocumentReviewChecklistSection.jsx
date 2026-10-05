@@ -9,7 +9,7 @@ export default function DocumentReviewChecklistSection({ form, errors, reference
   const { checklist } = form
 
   return (
-    <SectionCard step="3" title="Document Review Checklist" description="Status review dokumen PPAP.">
+    <SectionCard step="3" title="Document Review Checklist" description="Status review dokumen FSA.">
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
         {ITEMS.map((item) => (
           <Field key={item.key} label={item.label} error={errors[`checklist.${item.key}`]}>

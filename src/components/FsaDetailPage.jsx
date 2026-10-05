@@ -153,7 +153,7 @@ export default function FsaDetailPage({ reference, onBack, onEdit }) {
         readOnly
       />
 
-      <SectionCard step="2" title="PPAP Documents">
+      <SectionCard step="2" title="FSA Documents">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div>
             <p className="mb-2 text-sm font-medium text-slate-700">Appearance ({fsa.documents.appearance ? 1 : 0} file)</p>
@@ -169,7 +169,7 @@ export default function FsaDetailPage({ reference, onBack, onEdit }) {
           </div>
 
           <div>
-            <p className="mb-2 text-sm font-medium text-slate-700">PPAP Document ({fsa.documents.ppap.length} file)</p>
+            <p className="mb-2 text-sm font-medium text-slate-700">FSA Document ({fsa.documents.ppap.length} file)</p>
             {fsa.documents.ppap.length ? (
               <div className="space-y-2">
                 {fsa.documents.ppap.map((file) => (
@@ -178,7 +178,7 @@ export default function FsaDetailPage({ reference, onBack, onEdit }) {
               </div>
             ) : (
               <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-500">
-                Tidak ada file PPAP.
+                Tidak ada file FSA.
               </p>
             )}
           </div>

@@ -13,7 +13,7 @@ export function validateForm(form, users) {
   const { general, documents } = form
 
   if (!general.ppapLevel) {
-    errors.ppapLevel = 'PPAP level wajib dipilih'
+    errors.ppapLevel = 'FSA level wajib dipilih'
   }
   const partNumbers = splitParts(general.partNumber)
   if (partNumbers.length === 0 || partNumbers.some((part) => !PART_NUMBER_PATTERN.test(part))) {
@@ -120,7 +120,7 @@ export function isImage(file) {
 }
 
 export const MAX_FILE_SIZE = 10 * 1024 * 1024
-export const MAX_PPAP_FILES = 10
+export const MAX_FSA_FILES = 10
 
 export function readFileAsDataUrl(file) {
   return new Promise((resolve, reject) => {

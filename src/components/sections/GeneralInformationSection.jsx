@@ -10,15 +10,15 @@ export default function GeneralInformationSection({ form, errors, reference, onC
   const allUsers = reference.users
 
   return (
-    <SectionCard step="1" title="FSA General Information" description="Informasi dasar audit first sample inspection part.">
+    <SectionCard step="1" title="FSA General Information">
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-        <Field label="FSA Number" hint="Auto generated, tidak bisa diubah. Format FSA-yyyymmdd-xx, xx increment dalam 1 hari">
+        <Field label="FSA Number">
           <Input value={general.fsaNumber || 'Akan di-generate otomatis...'} readOnly disabled />
         </Field>
 
-        <Field label="PPAP Level" required error={errors.ppapLevel} hint="Level 1 sampai 5">
+        <Field label="FSA Level" required error={errors.ppapLevel}>
           <Select value={general.ppapLevel} onChange={set('ppapLevel')} invalid={Boolean(errors.ppapLevel)} disabled={disabled}>
-            <option value="">-- Pilih PPAP Level --</option>
+            <option value="">-- Pilih FSA Level --</option>
             {reference.ppapLevels.map((level) => (
               <option key={level} value={level}>
                 Level {level}
@@ -106,7 +106,7 @@ export default function GeneralInformationSection({ form, errors, reference, onC
           </Select>
         </Field>
 
-        <Field label="FSA Date of Creation" hint="Diisi otomatis saat FSA dibuat">
+        <Field label="FSA Date of Creation">
           <Input value={formatDateTime(general.createdAt)} readOnly disabled />
         </Field>
 
@@ -116,11 +116,11 @@ export default function GeneralInformationSection({ form, errors, reference, onC
           </Field>
         ) : null}
 
-        <Field label="Drawing Revision" required error={errors.drawingRevision} hint="Mulai dari 0">
+        <Field label="Drawing Revision" required error={errors.drawingRevision}>
           <Input type="number" min="0" step="1" value={general.drawingRevision} onChange={setNumber('drawingRevision')} placeholder="0" invalid={Boolean(errors.drawingRevision)} disabled={disabled} />
         </Field>
 
-        <Field label="Sourcing Volume" error={errors.sourcingVolume} hint="Jumlah volume sourcing (opsional)">
+        <Field label="Sourcing Volume" error={errors.sourcingVolume}>
           <Input type="number" min="0" step="1" value={general.sourcingVolume ?? ''} onChange={setNumber('sourcingVolume')} placeholder="0" invalid={Boolean(errors.sourcingVolume)} disabled={disabled} />
         </Field>
 
@@ -128,7 +128,7 @@ export default function GeneralInformationSection({ form, errors, reference, onC
           <Input type="date" value={general.dateOfSampleSubmission} onChange={set('dateOfSampleSubmission')} invalid={Boolean(errors.dateOfSampleSubmission)} disabled={disabled} />
         </Field>
 
-        <Field label="Sample Quantity" required error={errors.sampleQuantity} hint="Jumlah sample yang dikirim (mulai dari 0)">
+        <Field label="Sample Quantity" required error={errors.sampleQuantity}>
           <Input type="number" min="0" step="1" value={general.sampleQuantity} onChange={setNumber('sampleQuantity')} placeholder="0" invalid={Boolean(errors.sampleQuantity)} disabled={disabled} />
         </Field>
 

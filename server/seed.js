@@ -90,7 +90,7 @@ export const FSA_REASONS = [
   { id: 'change_of_raw_material', name: 'Change of Raw Material' },
 ]
 
-export const PPAP_LEVELS = [1, 2, 3, 4, 5]
+export const FSA_LEVELS = [1, 2, 3, 4, 5]
 
 export const CHECKLIST_STATUSES = [
   { id: 'not_available', name: 'Not Available' },

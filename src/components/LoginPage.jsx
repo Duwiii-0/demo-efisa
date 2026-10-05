@@ -47,7 +47,7 @@ export default function LoginPage({ onLogin }) {
           <h1 className="mt-3 text-3xl font-bold">EFISA</h1>
           <p className="mt-2 text-sm text-sky-100">First Sample Inspection</p>
           <ul className="mt-8 space-y-3 text-sm text-sky-100">
-            <li>Register sample part lengkap dengan dokumen PPAP</li>
+            <li>Register sample part lengkap dengan dokumen FSA</li>
             <li>Cross functional approval dari 5 fungsi</li>
             <li>Tracking status approval secara real time</li>
           </ul>
