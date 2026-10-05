@@ -23,7 +23,7 @@ function FsaTable({ items, reference, onOpenDetail, emptyText }) {
               <th className="px-5 py-3 font-semibold">Part Number</th>
               <th className="px-5 py-3 font-semibold">Material</th>
               <th className="px-5 py-3 font-semibold">Supplier</th>
-              <th className="px-5 py-3 font-semibold">Status</th>
+              <th className="px-5 py-3 text-center font-semibold">Status</th>
               <th className="px-5 py-3 font-semibold">Created</th>
             </tr>
           </thead>
@@ -38,8 +38,10 @@ function FsaTable({ items, reference, onOpenDetail, emptyText }) {
                 <td className="px-5 py-3 font-mono text-xs">{fsa.partNumber}</td>
                 <td className="max-w-xs truncate px-5 py-3 text-slate-600">{fsa.materialDescription}</td>
                 <td className="px-5 py-3 text-slate-600">{findName(reference.suppliers, fsa.supplierId)}</td>
-                <td className="px-5 py-3">
-                  <span className={badgeClass(fsa.approvalStatus)}>{findName(reference.fsaStatuses, fsa.approvalStatus)}</span>
+                <td className="px-5 py-3 text-center">
+                  <span className={badgeClass(fsa.approvalStatus)}>
+                    {findName(reference.fsaStatuses, fsa.approvalStatus)}
+                  </span>
                 </td>
                 <td className="px-5 py-3 text-slate-500">{formatDateTime(fsa.createdAt)}</td>
               </tr>

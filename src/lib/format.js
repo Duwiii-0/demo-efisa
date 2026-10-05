@@ -15,7 +15,7 @@ export const STATUS_STYLES = {
 }
 
 export const badgeClass = (id) =>
-  `inline-flex items-center rounded-full border border-white/60 px-2.5 py-0.5 text-xs font-medium backdrop-blur-md shadow-sm ${STATUS_STYLES[id] ?? STATUS_STYLES.pending}`
+  `inline-flex items-center rounded-md border border-white/60 px-2 py-0.5 text-[11px] font-medium backdrop-blur-md shadow-sm ${STATUS_STYLES[id] ?? STATUS_STYLES.pending}`
 
 export const findName = (list, id, key = 'name') => list.find((item) => item.id === id)?.[key] ?? '-'
 
