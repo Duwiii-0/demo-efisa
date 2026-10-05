@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
-html {
-  font-size: 140%;
+@media (min-width: 1536px) {
+  html {
+    font-size: 140%;
+  }
 }
 
