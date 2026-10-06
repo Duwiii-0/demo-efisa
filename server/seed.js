@@ -17,26 +17,6 @@ const users = [
   { id: 'usr-role-mee', name: 'Mechanical Engineer', role: 'mechanical_engineer', jobTitle: 'Mechanical Engineer', email: 'mechanical_engineer@siemens.com' },
   { id: 'usr-role-qm', name: 'Quality Management', role: 'quality_management', jobTitle: 'Quality Management', email: 'quality_management@siemens.com' },
   { id: 'usr-role-prd', name: 'Production', role: 'production', jobTitle: 'Production Supervisor', email: 'production@siemens.com' },
-
-  { id: 'usr-spr-01', name: 'Adi Pratama', role: 'procurement', division: 'DM', jobTitle: 'SPR Direct Material' },
-  { id: 'usr-spr-02', name: 'Siti Nurhaliza', role: 'procurement', division: 'DM', jobTitle: 'SPR Direct Material' },
-  { id: 'usr-spr-03', name: 'Budi Santoso', role: 'procurement', division: 'FT', jobTitle: 'SPR Fremdteil' },
-
-  { id: 'usr-eee-01', name: 'Andi Wijaya', role: 'electrical_engineer', jobTitle: 'Electrical Engineer' },
-  { id: 'usr-eee-02', name: 'Mira Sari', role: 'electrical_engineer', jobTitle: 'Electrical Engineer' },
-  { id: 'usr-eee-03', name: 'Fajar Nugroho', role: 'electrical_engineer', jobTitle: 'Electrical Engineer' },
-
-  { id: 'usr-mee-01', name: 'Bayu Saputra', role: 'mechanical_engineer', jobTitle: 'Mechanical Engineer' },
-  { id: 'usr-mee-02', name: 'Nadia Putri', role: 'mechanical_engineer', jobTitle: 'Mechanical Engineer' },
-  { id: 'usr-mee-03', name: 'Rizky Maulana', role: 'mechanical_engineer', jobTitle: 'Mechanical Engineer' },
-
-  { id: 'usr-qm-01', name: 'Citra Ayu', role: 'quality_management', jobTitle: 'Quality Management' },
-  { id: 'usr-qm-02', name: 'Hendra Gunawan', role: 'quality_management', jobTitle: 'Quality Management' },
-  { id: 'usr-qm-03', name: 'Laras Wulandari', role: 'quality_management', jobTitle: 'Quality Management' },
-
-  { id: 'usr-prd-01', name: 'Eko Prasetyo', role: 'production', jobTitle: 'Production Supervisor' },
-  { id: 'usr-prd-02', name: 'Maya Anggraini', role: 'production', jobTitle: 'Production Supervisor' },
-  { id: 'usr-prd-03', name: 'Surya Dharma', role: 'production', jobTitle: 'Production Supervisor' },
 ]
 
 function personalEmail(name) {

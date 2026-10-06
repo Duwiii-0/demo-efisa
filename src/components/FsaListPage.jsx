@@ -4,7 +4,7 @@ import { Alert, Button, Card, Spinner } from './ui.jsx'
 import { badgeClass, findName, formatDateTime } from '../lib/format.js'
 import { assignedActionableKeys } from '../lib/fsaForm.js'
 
-function FsaTable({ items, reference, onOpenDetail, emptyText }) {
+function FsaTable({ items, reference, onOpenDetail, emptyText, onAct, busyId }) {
   if (items.length === 0) {
     return (
       <Card>
@@ -25,6 +25,7 @@ function FsaTable({ items, reference, onOpenDetail, emptyText }) {
               <th className="px-5 py-3 font-semibold">Supplier</th>
               <th className="px-5 py-3 text-center font-semibold">Status</th>
               <th className="px-5 py-3 font-semibold">Created</th>
+              <th className="px-5 py-3 font-semibold">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -44,6 +45,26 @@ function FsaTable({ items, reference, onOpenDetail, emptyText }) {
                   </span>
                 </td>
                 <td className="px-5 py-3 text-slate-500">{formatDateTime(fsa.createdAt)}</td>
+                <td className="px-5 py-3" onClick={(event) => event.stopPropagation()}>
+                  <select
+                    className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+                    defaultValue=""
+                    disabled={busyId === fsa.id}
+                    onChange={(event) => {
+                      const action = event.target.value
+                      event.target.value = ''
+                      if (action) onAct(fsa, action)
+                    }}
+                  >
+                    <option value="" disabled>
+                      Pilih aksi
+                    </option>
+                    <option value="show">Show</option>
+                    <option value="approve">Approve</option>
+                    <option value="reject">Reject</option>
+                    <option value="rework">Rework</option>
+                  </select>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -57,6 +78,8 @@ function FsaTable({ items, reference, onOpenDetail, emptyText }) {
 export default function FsaListPage({ reference, onOpenDetail, onCreate, canCreate, view = 'assigned' }) {
   const [items, setItems] = useState(null)
   const [error, setError] = useState('')
+  const [busyId, setBusyId] = useState(null)
+  const [actionError, setActionError] = useState('')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [sortOrder, setSortOrder] = useState('latest')
@@ -130,6 +153,49 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, canCrea
       .sort((a, b) => (sortOrder === 'latest' ? b.createdAt.localeCompare(a.createdAt) : a.createdAt.localeCompare(b.createdAt)))
   }, [baseList, search, statusFilter, sortOrder, reference.suppliers])
 
+  async function handleAction(fsa, action) {
+    if (action === 'show') {
+      onOpenDetail(fsa.id)
+      return
+    }
+
+    let key = null
+    if (fsa.approvalStatus === 'rework_required') {
+      const sprApproverId = fsa.approvals?.procurement?.approverId
+      if (sprApproverId ? sprApproverId === me?.id : me?.role === 'procurement') {
+        key = 'procurement'
+      }
+    } else {
+      key = assignedActionableKeys(fsa, me?.id)[0] ?? null
+    }
+
+    if (!key) {
+      setActionError(`Tidak ada tahapan yang bisa diputuskan untuk FSA ${fsa.fsaNumber}.`)
+      return
+    }
+
+    if (action === 'reject' && !window.confirm('Reject akan langsung membatalkan (canceled) FSA ini. Lanjutkan?')) {
+      return
+    }
+
+    const decisionMap = { approve: 'approved', reject: 'rejected', rework: 'rework' }
+    setBusyId(fsa.id)
+    setActionError('')
+    try {
+      await api.updateDecision(fsa.id, key, {
+        decision: decisionMap[action],
+        remark: '',
+        ...(action === 'reject' ? { canceled: true } : {}),
+      })
+      const data = await api.listFsas({})
+      setItems(data.items)
+    } catch (err) {
+      setActionError(err.message)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   return (
     <div className="space-y-5">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -143,6 +209,7 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, canCrea
       </header>
 
       {error ? <Alert>{error}</Alert> : null}
+      {actionError ? <Alert>{actionError}</Alert> : null}
 
       <Card className="p-2">
         <div className="flex flex-col gap-2.5 p-3 sm:flex-row sm:items-center">
@@ -191,6 +258,8 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, canCrea
           items={visible}
           reference={reference}
           onOpenDetail={onOpenDetail}
+          onAct={handleAction}
+          busyId={busyId}
           emptyText={
             baseList && baseList.length > 0
               ? 'Tidak ada data yang cocok dengan filter.'
