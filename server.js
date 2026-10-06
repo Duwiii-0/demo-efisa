@@ -3,7 +3,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import crypto from 'node:crypto'
 import express from 'express'
-import { buildNextNumber, createFsa, updateDecision, updateFsa, ValidationError } from './server/fsa.js'
+import { buildNextNumber, createFsa, updateDecision, updateFsa, updateChecklist, ValidationError } from './server/fsa.js'
 import {
   APPROVAL_DECISIONS,
   APPROVAL_FUNCTIONS,
@@ -222,6 +222,27 @@ app.patch('/api/fsa/:id/decision/:key', requireAuth, async (req, res, next) => {
     }
     res.json({ fsa })
   } catch (error) {
+    if (error.status) {
+      res.status(error.status).json({ error: error.message, errors: error.errors ?? null })
+      return
+    }
+    next(error)
+  }
+})
+
+app.patch('/api/fsa/:id/checklist', requireAuth, async (req, res, next) => {
+  try {
+    const fsa = await updateChecklist(req.params.id, req.body, req.user)
+    if (!fsa) {
+      res.status(404).json({ error: 'FSA tidak ditemukan' })
+      return
+    }
+    res.json({ fsa })
+  } catch (error) {
+    if (error instanceof ValidationError) {
+      res.status(422).json({ error: error.message, errors: error.errors })
+      return
+    }
     if (error.status) {
       res.status(error.status).json({ error: error.message, errors: error.errors ?? null })
       return

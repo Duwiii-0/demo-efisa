@@ -201,6 +201,17 @@ function normalizeChecklist(raw, errors) {
     appearanceApprovalReport: read('appearanceApprovalReport'),
     checkSheet: read('checkSheet'),
     millCertificate: read('millCertificate'),
+    drawing: read('drawing'),
+    engineeringChangeDocument: read('engineeringChangeDocument'),
+    customerEngineeringApproval: read('customerEngineeringApproval'),
+    designFmea: read('designFmea'),
+    processFmea: read('processFmea'),
+    controlPlan: read('controlPlan'),
+    measurementSystemAnalysis: read('measurementSystemAnalysis'),
+    dimensionalMeasurement: read('dimensionalMeasurement'),
+    functionalTest: read('functionalTest'),
+    initialProcessStudies: read('initialProcessStudies'),
+    qualifiedLaboratoryDocumentation: read('qualifiedLaboratoryDocumentation'),
   }
 }
 
@@ -664,6 +675,73 @@ export async function updateDecision(fsaId, fnKey, payload, actor) {
     byId: actor.id,
     action: 'decision',
     note: forceCancel ? `${fn.label}: rejected (FSA canceled)` : `${fn.label}: ${decision}`,
+  })
+
+  return saveFsaRow(fsa)
+}
+
+const CHECKLIST_UPDATE_ALLOWED = new Set([
+  'checkSheet',
+  'millCertificate',
+  'drawing',
+  'engineeringChangeDocument',
+  'customerEngineeringApproval',
+  'designFmea',
+  'processFmea',
+  'controlPlan',
+  'measurementSystemAnalysis',
+  'dimensionalMeasurement',
+  'functionalTest',
+  'initialProcessStudies',
+  'qualifiedLaboratoryDocumentation',
+  'appearanceApprovalReport',
+])
+
+export async function updateChecklist(fsaId, payload, actor) {
+  const fsa = await getFsaById(fsaId)
+  if (!fsa) return null
+
+  if (fsa.approvalStatus === 'canceled' || fsa.approvalStatus === 'accepted') {
+    const error = new Error('FSA sudah terminal, checklist tidak bisa diubah')
+    error.status = 422
+    throw error
+  }
+
+  if (actor.role === 'procurement') {
+    const error = new Error('Procurement tidak berwenang mengubah checklist')
+    error.status = 403
+    throw error
+  }
+
+  const assignedAsApprover = Object.values(fsa.approvals ?? {}).some(
+    (approval) => approval?.approverId === actor.id,
+  )
+  if (!assignedAsApprover) {
+    const error = new Error('Hanya approver yang di-assign sebagai decision yang boleh mengubah checklist')
+    error.status = 403
+    throw error
+  }
+
+  const errors = {}
+  const checklist = { ...(fsa.checklist ?? {}) }
+  for (const [key, value] of Object.entries(payload ?? {})) {
+    if (!CHECKLIST_UPDATE_ALLOWED.has(key)) continue
+    if (!CHECKLIST_IDS.has(value)) {
+      errors[key] = `Nilai checklist ${key} tidak valid`
+      continue
+    }
+    checklist[key] = value
+  }
+  if (Object.keys(errors).length > 0) {
+    throw new ValidationError(errors, 'Data checklist tidak valid')
+  }
+
+  fsa.checklist = checklist
+  fsa.history.push({
+    at: new Date().toISOString(),
+    byId: actor.id,
+    action: 'checklist',
+    note: 'Checklist diperbarui',
   })
 
   return saveFsaRow(fsa)

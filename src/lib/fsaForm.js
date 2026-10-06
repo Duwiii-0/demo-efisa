@@ -107,6 +107,26 @@ export function findSkippedApprovals(approvals) {
   return skipped
 }
 
+export const CHECKLIST_BASE_ITEMS = [
+  { key: 'checkSheet', label: 'Check Sheet' },
+  { key: 'millCertificate', label: 'Mill Certificate' },
+]
+
+export const CHECKLIST_LEVEL3_ITEMS = [
+  { key: 'drawing', label: 'Drawing' },
+  { key: 'engineeringChangeDocument', label: 'Engineering Change Document' },
+  { key: 'customerEngineeringApproval', label: 'Customer Engineering Approval' },
+  { key: 'designFmea', label: 'Design FMEA' },
+  { key: 'processFmea', label: 'Process FMEA' },
+  { key: 'controlPlan', label: 'Control Plan' },
+  { key: 'measurementSystemAnalysis', label: 'Measurement System Analysis' },
+  { key: 'dimensionalMeasurement', label: 'Dimensional Measurement' },
+  { key: 'functionalTest', label: 'Functional Test' },
+  { key: 'initialProcessStudies', label: 'Initial Process Studies' },
+  { key: 'qualifiedLaboratoryDocumentation', label: 'Qualified Laboratory Documentation' },
+  { key: 'appearanceApprovalReport', label: 'Appearance Approval Report' },
+]
+
 export const emptyFsaForm = () => ({
   general: {
     fsaNumber: '',
@@ -128,9 +148,20 @@ export const emptyFsaForm = () => ({
   },
   documents: { appearance: null, ppap: [] },
   checklist: {
-    appearanceApprovalReport: 'not_available',
     checkSheet: 'not_available',
     millCertificate: 'not_available',
+    drawing: 'not_available',
+    engineeringChangeDocument: 'not_available',
+    customerEngineeringApproval: 'not_available',
+    designFmea: 'not_available',
+    processFmea: 'not_available',
+    controlPlan: 'not_available',
+    measurementSystemAnalysis: 'not_available',
+    dimensionalMeasurement: 'not_available',
+    functionalTest: 'not_available',
+    initialProcessStudies: 'not_available',
+    qualifiedLaboratoryDocumentation: 'not_available',
+    appearanceApprovalReport: 'not_available',
   },
   approvals: emptyApprovals(),
 })

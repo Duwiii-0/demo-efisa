@@ -46,9 +46,20 @@ function buildFormFromFsa(fsa) {
       ppap: (fsa.documents?.ppap ?? []).map((f) => ({ ...f, _existing: true })),
     },
     checklist: {
-      appearanceApprovalReport: fsa.checklist?.appearanceApprovalReport ?? 'not_available',
       checkSheet: fsa.checklist?.checkSheet ?? 'not_available',
       millCertificate: fsa.checklist?.millCertificate ?? 'not_available',
+      drawing: fsa.checklist?.drawing ?? 'not_available',
+      engineeringChangeDocument: fsa.checklist?.engineeringChangeDocument ?? 'not_available',
+      customerEngineeringApproval: fsa.checklist?.customerEngineeringApproval ?? 'not_available',
+      designFmea: fsa.checklist?.designFmea ?? 'not_available',
+      processFmea: fsa.checklist?.processFmea ?? 'not_available',
+      controlPlan: fsa.checklist?.controlPlan ?? 'not_available',
+      measurementSystemAnalysis: fsa.checklist?.measurementSystemAnalysis ?? 'not_available',
+      dimensionalMeasurement: fsa.checklist?.dimensionalMeasurement ?? 'not_available',
+      functionalTest: fsa.checklist?.functionalTest ?? 'not_available',
+      initialProcessStudies: fsa.checklist?.initialProcessStudies ?? 'not_available',
+      qualifiedLaboratoryDocumentation: fsa.checklist?.qualifiedLaboratoryDocumentation ?? 'not_available',
+      appearanceApprovalReport: fsa.checklist?.appearanceApprovalReport ?? 'not_available',
     },
     approvals: Object.fromEntries(
       APPROVAL_ORDER.map((key) => [
@@ -342,6 +353,7 @@ export default function FsaEditPage({ reference, user, onCancel, onSaved }) {
         errors={errors}
         reference={reference}
         onChange={(checklist) => setForm((current) => ({ ...current, checklist }))}
+        lockLevel3
       />
       ) : null}
 

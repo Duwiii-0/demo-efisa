@@ -7,10 +7,7 @@ import CrossFunctionalApprovalSection from './sections/CrossFunctionalApprovalSe
 import { assignedActionableKeys } from '../lib/fsaForm.js'
 import { badgeClass, findName, formatBytes } from '../lib/format.js'
 
-const CHECKLIST_LABELS = {
-  checkSheet: 'Check Sheet',
-  millCertificate: 'Mill Certificate',
-}
+import { CHECKLIST_BASE_ITEMS, CHECKLIST_LEVEL3_ITEMS } from '../lib/fsaForm.js'
 
 function FileLink({ file, onClick }) {
   return (
@@ -65,6 +62,27 @@ export default function FsaDetailPage({ reference, onBack, onEdit }) {
     () => (fsa ? assignedActionableKeys(fsa, reference.me?.id) : []),
     [fsa, reference],
   )
+
+  const canEditChecklist = useMemo(() => {
+    if (!fsa || !reference.me) return false
+    if (reference.me.role === 'procurement') return false
+    if (fsa.approvalStatus === 'accepted' || fsa.approvalStatus === 'canceled') return false
+    return Object.values(fsa.approvals ?? {}).some((approval) => approval?.approverId === reference.me.id)
+  }, [fsa, reference])
+
+  async function handleChecklistChange(key, value) {
+    setBusyKey('checklist')
+    setToast(null)
+    try {
+      const result = await api.updateChecklist(id, { [key]: value })
+      setFsa(result.fsa)
+      setToast({ tone: 'success', message: 'Checklist berhasil diperbarui.' })
+    } catch (err) {
+      setToast({ tone: 'error', message: err.message })
+    } finally {
+      setBusyKey(null)
+    }
+  }
 
   async function handleDownload(file) {
     try {
@@ -223,17 +241,24 @@ export default function FsaDetailPage({ reference, onBack, onEdit }) {
       {stepIndex === 2 ? (
       <SectionCard step="3" title="Document Review Checklist">
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          {Object.entries(CHECKLIST_LABELS).map(([key, label]) => (
-            <Field key={key} label={label}>
-              <Select value={fsa.checklist[key]} disabled>
-                {reference.checklistStatuses.map((status) => (
-                  <option key={status.id} value={status.id}>
-                    {status.name}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          ))}
+          {(Number(fsa.ppapLevel) === 3 ? [...CHECKLIST_BASE_ITEMS, ...CHECKLIST_LEVEL3_ITEMS] : CHECKLIST_BASE_ITEMS).map(({ key, label }) => {
+            const editable = canEditChecklist
+            return (
+              <Field key={key} label={label}>
+                <Select
+                  value={fsa.checklist[key] ?? 'not_available'}
+                  disabled={!editable || busyKey === 'checklist'}
+                  onChange={(event) => handleChecklistChange(key, event.target.value)}
+                >
+                  {reference.checklistStatuses.map((status) => (
+                    <option key={status.id} value={status.id}>
+                      {status.name}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            )
+          })}
         </div>
       </SectionCard>
       ) : null}

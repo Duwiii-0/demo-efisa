@@ -253,6 +253,7 @@ export default function FsaCreatePage({ reference, user, onCancel, onCreated }) 
           errors={errors}
           reference={reference}
           onChange={(checklist) => setForm((current) => ({ ...current, checklist }))}
+          lockLevel3
         />
       ) : null}
 
