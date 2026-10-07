@@ -15,7 +15,7 @@ export const STATUS_STYLES = {
 }
 
 export const badgeClass = (id, size = 'sm') =>
-  `inline-flex items-center rounded-md border border-white/60 shadow-sm backdrop-blur-md ${
+  `inline-flex items-center whitespace-nowrap rounded-md border border-white/60 shadow-sm backdrop-blur-md ${
     size === 'lg' ? 'px-3 py-1 text-sm font-semibold' : 'px-2 py-0.5 text-xs font-medium'
   } ${STATUS_STYLES[id] ?? STATUS_STYLES.pending}`
 
@@ -28,17 +28,26 @@ export function formatDate(value) {
   return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
+export function formatTime(value) {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '-'
+  return date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+}
+
 export function formatDateTime(value) {
   if (!value) return '-'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return '-'
-  return date.toLocaleString('id-ID', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  return (
+    date.toLocaleString('id-ID', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }) + ' WIB'
+  )
 }
 
 export function formatBytes(size) {

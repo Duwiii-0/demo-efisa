@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useParams } from 'react-router-dom'
-import { api, downloadFile } from '../lib/api.js'
+import { useParams, useSearchParams } from 'react-router-dom'
+import { api, downloadFile, getToken } from '../lib/api.js'
 import { Alert, Button, Card, DetailRow, SectionCard, Select, Field, Spinner, Toast } from './ui.jsx'
 import GeneralInformationSection from './sections/GeneralInformationSection.jsx'
 import CrossFunctionalApprovalSection from './sections/CrossFunctionalApprovalSection.jsx'
@@ -9,31 +9,97 @@ import { badgeClass, findName, formatBytes } from '../lib/format.js'
 
 import { CHECKLIST_BASE_ITEMS, CHECKLIST_LEVEL3_ITEMS } from '../lib/fsaForm.js'
 
-function FileLink({ file, onClick }) {
+async function openPreview(file) {
+  const response = await fetch(api.downloadUrl(file.storedName), { headers: { Authorization: `Bearer ${getToken()}` } })
+  if (!response.ok) throw new Error('Gagal memuat file')
+  const blob = await response.blob()
+  const extMime = (() => {
+    const ext = (file.fileName ?? '').split('.').pop()?.toLowerCase()
+    return { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp', pdf: 'application/pdf' }[ext]
+  })()
+  const typed = new Blob([blob], { type: file.mime || extMime || blob.type || 'application/octet-stream' })
+  const url = URL.createObjectURL(typed)
+  window.open(url, '_blank')
+  setTimeout(() => URL.revokeObjectURL(url), 60000)
+}
+
+function AppearancePreview({ file, onDownload }) {
+  const [previewUrl, setPreviewUrl] = useState(null)
+  const [previewError, setPreviewError] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    let objectUrl
+    fetch(api.downloadUrl(file.storedName), { headers: { Authorization: `Bearer ${getToken()}` } })
+      .then((response) => {
+        if (!response.ok) throw new Error('fail')
+        return response.blob()
+      })
+      .then((blob) => {
+        if (!active) return
+        objectUrl = URL.createObjectURL(blob)
+        setPreviewUrl(objectUrl)
+      })
+      .catch(() => active && setPreviewError(true))
+    return () => {
+      active = false
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [file.storedName])
+
   return (
-    <button
-      type="button"
-      onClick={() => onClick(file)}
-      className="flex w-full items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left transition hover:border-sky-300 hover:bg-sky-50"
-    >
-      <span className="min-w-0">
+    <div className="space-y-2">
+      {previewUrl && !previewError ? (
+        <div className="flex justify-center">
+          <button type="button" onClick={() => openPreview(file)} className="block overflow-hidden rounded-lg border border-slate-200 transition hover:ring-2 hover:ring-sky-300">
+            <img src={previewUrl} alt={file.fileName} className="max-h-56 w-auto object-cover" />
+          </button>
+        </div>
+      ) : previewError ? (
+        <p className="text-xs text-slate-400">Preview tidak tersedia.</p>
+      ) : (
+        <p className="text-xs text-slate-400">Memuat preview...</p>
+      )}
+      <FileLink
+        file={file}
+        onPreview={() => openPreview(file).catch(() => onDownload(file))}
+        onDownload={() => onDownload(file)}
+      />
+    </div>
+  )
+}
+
+function FileLink({ file, onPreview, onDownload, previewable = true }) {
+  return (
+    <div className="flex w-full items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left">
+      <button type="button" onClick={previewable ? onPreview : onDownload} className="min-w-0 flex-1 text-left">
         <span className="block truncate text-sm font-medium text-slate-800">{file.fileName}</span>
         <span className="text-xs text-slate-500">
           {formatBytes(file.size)} {file.mime ? `- ${file.mime}` : ''}
         </span>
-      </span>
-      <span className="shrink-0 text-xs font-semibold text-sky-700">Download</span>
-    </button>
+      </button>
+      <div className="flex shrink-0 items-center gap-2">
+        {previewable ? (
+          <button type="button" onClick={onPreview} className="px-2 py-2 text-xs font-semibold text-sky-700 hover:underline">
+            Preview
+          </button>
+        ) : null}
+        <Button variant="secondary" onClick={onDownload}>Download</Button>
+      </div>
+    </div>
   )
 }
 
 export default function FsaDetailPage({ reference, onBack, onEdit }) {
   const { id } = useParams()
+  const [searchParams] = useSearchParams()
+  const editable = searchParams.get('mode') === 'edit'
   const [fsa, setFsa] = useState(null)
   const [error, setError] = useState('')
   const [toast, setToast] = useState(null)
   const [busyKey, setBusyKey] = useState(null)
   const [stepIndex, setStepIndex] = useState(0)
+  const [pendingChecklist, setPendingChecklist] = useState({})
 
   const DETAIL_STEPS = ['FSA General Information', 'FSA Documents', 'Document Review Checklist', 'Cross Functional Requirement']
 
@@ -70,18 +136,9 @@ export default function FsaDetailPage({ reference, onBack, onEdit }) {
     return Object.values(fsa.approvals ?? {}).some((approval) => approval?.approverId === reference.me.id)
   }, [fsa, reference])
 
-  async function handleChecklistChange(key, value) {
-    setBusyKey('checklist')
+  function handleChecklistChange(key, value) {
+    setPendingChecklist((current) => ({ ...current, [key]: value }))
     setToast(null)
-    try {
-      const result = await api.updateChecklist(id, { [key]: value })
-      setFsa(result.fsa)
-      setToast({ tone: 'success', message: 'Checklist berhasil diperbarui.' })
-    } catch (err) {
-      setToast({ tone: 'error', message: err.message })
-    } finally {
-      setBusyKey(null)
-    }
   }
 
   async function handleDownload(file) {
@@ -96,8 +153,17 @@ export default function FsaDetailPage({ reference, onBack, onEdit }) {
     setBusyKey(key)
     setToast(null)
     try {
-      const result = await api.updateDecision(id, key, { decision, remark, ...(canceled ? { canceled: true } : {}) })
-      setFsa(result.fsa)
+      const entries = Object.entries(pendingChecklist)
+      let saved = null
+      if (entries.length > 0) {
+        const payload = Object.fromEntries(entries)
+        const result = await api.updateChecklist(id, payload)
+        saved = result.fsa
+        setFsa(saved)
+        setPendingChecklist({})
+      }
+      const decideResult = await api.updateDecision(id, key, { decision, remark, ...(canceled ? { canceled: true } : {}) })
+      setFsa(decideResult.fsa)
       setToast({
         tone: 'success',
         message: canceled
@@ -137,7 +203,7 @@ export default function FsaDetailPage({ reference, onBack, onEdit }) {
         <div className="flex items-center gap-3">
           {onEdit && fsa.approvalStatus === 'rework_required' && (fsa.approvals?.procurement?.approverId ? fsa.approvals?.procurement?.approverId === reference.me?.id : reference.me?.role === 'procurement') ? (
             <Button variant="warning" onClick={() => onEdit(fsa)}>
-              ✏️ Edit untuk Rework
+              Edit untuk Rework
             </Button>
           ) : null}
           <span className={badgeClass(fsa.approvalStatus, 'lg')}>{findName(reference.fsaStatuses, fsa.approvalStatus)}</span>
@@ -210,9 +276,7 @@ export default function FsaDetailPage({ reference, onBack, onEdit }) {
           <div>
             <p className="mb-2 text-sm font-medium text-slate-700">Appearance ({fsa.documents.appearance ? 1 : 0} file)</p>
             {fsa.documents.appearance ? (
-              <div className="space-y-2">
-                <FileLink file={fsa.documents.appearance} onClick={handleDownload} />
-              </div>
+              <AppearancePreview file={fsa.documents.appearance} onDownload={handleDownload} />
             ) : (
               <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-500">
                 Tidak ada foto appearance.
@@ -224,9 +288,18 @@ export default function FsaDetailPage({ reference, onBack, onEdit }) {
             <p className="mb-2 text-sm font-medium text-slate-700">FSA Document ({fsa.documents.ppap.length} file)</p>
             {fsa.documents.ppap.length ? (
               <div className="space-y-2">
-                {fsa.documents.ppap.map((file) => (
-                  <FileLink key={file.storedName} file={file} onClick={handleDownload} />
-                ))}
+                {fsa.documents.ppap.map((file) => {
+                  const previewable = /pdf|image/.test(file.mime ?? '') || /\.(pdf|jpe?g|png|gif|webp)$/i.test(file.fileName ?? '')
+                  return (
+                    <FileLink
+                      key={file.storedName}
+                      file={file}
+                      previewable={previewable}
+                      onPreview={() => openPreview(file).catch(() => {})}
+                      onDownload={() => handleDownload(file)}
+                    />
+                  )
+                })}
               </div>
             ) : (
               <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-500">
@@ -246,10 +319,11 @@ export default function FsaDetailPage({ reference, onBack, onEdit }) {
             return (
               <Field key={key} label={label}>
                 <Select
-                  value={fsa.checklist[key] ?? 'not_available'}
-                  disabled={!editable || busyKey === 'checklist'}
+                  value={pendingChecklist[key] ?? fsa.checklist[key] ?? ''}
+                  disabled={!editable || busyKey}
                   onChange={(event) => handleChecklistChange(key, event.target.value)}
                 >
+                  <option value="">-- Pilih status --</option>
                   {reference.checklistStatuses.map((status) => (
                     <option key={status.id} value={status.id}>
                       {status.name}
@@ -265,14 +339,14 @@ export default function FsaDetailPage({ reference, onBack, onEdit }) {
 
       {stepIndex === 3 ? (
       <CrossFunctionalApprovalSection
-        form={{ approvals: fsa.approvals }}
+        form={{ approvals: fsa.approvals, createdAt: fsa.createdAt }}
         errors={{}}
         reference={reference}
         onChange={() => {}}
         readOnly
-        actionableKeys={myActionable}
+        actionableKeys={editable ? myActionable : []}
         busyKey={busyKey}
-        onDecide={handleDecide}
+        onDecide={editable ? handleDecide : undefined}
       />
       ) : null}
 

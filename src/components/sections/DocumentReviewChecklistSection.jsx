@@ -15,11 +15,12 @@ export default function DocumentReviewChecklistSection({ form, errors, reference
           return (
             <Field key={item.key} label={item.label} error={errors[`checklist.${item.key}`]}>
               <Select
-                value={checklist[item.key] ?? 'not_available'}
+                value={checklist[item.key] ?? ''}
                 onChange={(event) => onChange({ ...checklist, [item.key]: event.target.value })}
                 invalid={Boolean(errors[`checklist.${item.key}`])}
                 disabled={disabled}
               >
+                <option value="">-- Pilih status --</option>
                 {reference.checklistStatuses.map((status) => (
                   <option key={status.id} value={status.id}>
                     {status.name}

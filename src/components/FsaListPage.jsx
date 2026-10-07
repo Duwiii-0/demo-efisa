@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api.js'
 import { Alert, Button, Card, Spinner } from './ui.jsx'
-import { badgeClass, findName, formatDateTime } from '../lib/format.js'
+import { badgeClass, findName, formatDate, formatTime } from '../lib/format.js'
 import { assignedActionableKeys } from '../lib/fsaForm.js'
 
 function FsaTable({ items, reference, onOpenDetail, emptyText, onAct, busyId, sort, onToggleSort }) {
@@ -20,41 +20,44 @@ function FsaTable({ items, reference, onOpenDetail, emptyText, onAct, busyId, so
           <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
             <tr>
               <th
-                className="cursor-pointer select-none px-5 py-3 font-semibold hover:text-slate-700"
+                className="cursor-pointer select-none whitespace-nowrap px-5 py-3 font-semibold hover:text-slate-700"
                 onClick={() => onToggleSort('fsaNumber')}
               >
                 FSA Number <span className={`inline-flex items-center align-middle text-[9px] leading-none ${sort.field === 'fsaNumber' ? '' : 'opacity-40'}`}>{sort.field === 'fsaNumber' ? (sort.dir === 'asc' ? '▲' : '▼') : '▲▼'}</span>
               </th>
-              <th className="px-5 py-3 font-semibold">Part Number</th>
+              <th className="whitespace-nowrap px-5 py-3 font-semibold">Part Number</th>
               <th className="px-5 py-3 font-semibold">Material</th>
               <th className="px-5 py-3 font-semibold">Supplier</th>
               <th className="px-5 py-3 text-center font-semibold">Status</th>
               <th
-                className="cursor-pointer select-none px-5 py-3 font-semibold hover:text-slate-700"
+                className="cursor-pointer select-none whitespace-nowrap px-5 py-3 text-center font-semibold hover:text-slate-700"
                 onClick={() => onToggleSort('createdAt')}
               >
                 Created <span className={`inline-flex items-center align-middle text-[9px] leading-none ${sort.field === 'createdAt' ? '' : 'opacity-40'}`}>{sort.field === 'createdAt' ? (sort.dir === 'desc' ? '▼' : '▲') : '▲▼'}</span>
               </th>
-              <th className="px-5 py-3 font-semibold">Aksi</th>
+              <th className="px-5 py-3 text-center font-semibold">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {items.map((fsa) => (
               <tr
                 key={fsa.id}
-                onClick={() => onOpenDetail(fsa.id)}
+                onClick={() => onOpenDetail(fsa.id, { editable: true })}
                 className="cursor-pointer transition hover:bg-sky-50/60"
               >
-                <td className="px-5 py-3 font-semibold text-sky-700">{fsa.fsaNumber}</td>
+                <td className="px-5 py-3 text-xs font-semibold text-sky-700">{fsa.fsaNumber}</td>
                 <td className="px-5 py-3 font-mono text-xs">{fsa.partNumber}</td>
                 <td className="max-w-xs truncate px-5 py-3 text-slate-600">{fsa.materialDescription}</td>
                 <td className="px-5 py-3 text-slate-600">{findName(reference.suppliers, fsa.supplierId)}</td>
-                <td className="px-5 py-3 text-center">
+                <td className="px-5 py-3 text-center [&>span]:max-w-32 [&>span]:text-center [&>span]:whitespace-normal [&>span]:leading-tight">
                   <span className={badgeClass(fsa.approvalStatus)}>
                     {findName(reference.fsaStatuses, fsa.approvalStatus)}
                   </span>
                 </td>
-                <td className="px-5 py-3 text-slate-500">{formatDateTime(fsa.createdAt)}</td>
+                <td className="px-5 py-3 text-center text-slate-500">
+                  <div>{formatDate(fsa.createdAt)}</div>
+                  <div>{formatTime(fsa.createdAt)} WIB</div>
+                </td>
                 <td className="px-5 py-3" onClick={(event) => event.stopPropagation()}>
                   <select
                     className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
@@ -89,6 +92,8 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, canCrea
   const [items, setItems] = useState(null)
   const [error, setError] = useState('')
   const [busyId, setBusyId] = useState(null)
+  const [pendingAction, setPendingAction] = useState(null)
+  const [decideRemark, setDecideRemark] = useState('')
   const [actionError, setActionError] = useState('')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
@@ -184,21 +189,27 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, canCrea
       return
     }
 
-    if (action === 'reject' && !window.confirm('Reject akan langsung membatalkan (canceled) FSA ini. Lanjutkan?')) {
-      return
-    }
+    setPendingAction({ fsa, key, action })
+    setDecideRemark('')
+    return
+  }
 
+  async function confirmDecision() {
+    if (!pendingAction) return
+    const { fsa, key, action } = pendingAction
     const decisionMap = { approve: 'approved', reject: 'rejected', rework: 'rework' }
     setBusyId(fsa.id)
     setActionError('')
     try {
       await api.updateDecision(fsa.id, key, {
         decision: decisionMap[action],
-        remark: '',
+        remark: decideRemark,
         ...(action === 'reject' ? { canceled: true } : {}),
       })
       const data = await api.listFsas({})
       setItems(data.items)
+      setPendingAction(null)
+      setDecideRemark('')
     } catch (err) {
       setActionError(err.message)
     } finally {
@@ -254,7 +265,7 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, canCrea
         </div>
       </Card>
 
-      {!visible ? (
+       {!visible ? (
         <Spinner />
       ) : (
         <FsaTable
@@ -282,6 +293,38 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, canCrea
           }
         />
       )}
+
+      {pendingAction ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4" onClick={() => setPendingAction(null)}>
+          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl" onClick={(event) => event.stopPropagation()}>
+            <h2 className="text-base font-semibold text-slate-900">
+              {pendingAction.action === 'approve' ? 'Approve' : pendingAction.action === 'reject' ? 'Reject' : 'Rework'} FSA {pendingAction.fsa.fsaNumber}
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">Tambahkan catatan (opsional).</p>
+            <textarea
+              className="mt-3 min-h-24 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+              rows={3}
+              value={decideRemark}
+              onChange={(event) => setDecideRemark(event.target.value)}
+              placeholder="Tulis catatan..."
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setPendingAction(null)}>Batal</Button>
+              <Button
+                variant={pendingAction.action === 'reject' ? 'danger' : 'primary'}
+                onClick={() => {
+                  if (pendingAction.action === 'reject' && !window.confirm('Reject akan langsung membatalkan (canceled) FSA ini. Lanjutkan?')) {
+                    return
+                  }
+                  confirmDecision()
+                }}
+              >
+                {pendingAction.action === 'approve' ? 'Approve' : pendingAction.action === 'reject' ? 'Reject' : 'Rework'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
