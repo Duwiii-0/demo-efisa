@@ -88,7 +88,7 @@ function FsaTable({ items, reference, onOpenDetail, emptyText, onAct, busyId, so
   )
 }
 
-export default function FsaListPage({ reference, onOpenDetail, onCreate, canCreate, view = 'assigned' }) {
+export default function FsaListPage({ reference, onOpenDetail, onCreate, onFlash, canCreate, view = 'assigned' }) {
   const [items, setItems] = useState(null)
   const [error, setError] = useState('')
   const [busyId, setBusyId] = useState(null)
@@ -210,6 +210,10 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, canCrea
       setItems(data.items)
       setPendingAction(null)
       setDecideRemark('')
+      if (onFlash) {
+        const verb = action === 'approve' ? 'di-approved' : action === 'reject' ? 'di-rejected' : 'di-rework'
+        onFlash(`FSA dengan id ${fsa.fsaNumber} berhasil ${verb}.`)
+      }
     } catch (err) {
       setActionError(err.message)
     } finally {

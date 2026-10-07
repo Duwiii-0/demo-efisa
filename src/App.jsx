@@ -110,6 +110,7 @@ function AppRoutes() {
               canCreate={session.user.role === 'procurement'}
               view="assigned"
               onCreate={() => navigate('/create')}
+              onFlash={(message) => setFlash(message)}
               onOpenDetail={(id, options) => {
                 setFlash('')
                 navigate(options?.editable ? `/fsa/${id}?mode=edit` : `/fsa/${id}`)
@@ -125,6 +126,7 @@ function AppRoutes() {
               canCreate={session.user.role === 'procurement'}
               view="all"
               onCreate={() => navigate('/create')}
+              onFlash={(message) => setFlash(message)}
               onOpenDetail={(id, options) => {
                 setFlash('')
                 navigate(options?.editable ? `/fsa/${id}?mode=edit` : `/fsa/${id}`)
