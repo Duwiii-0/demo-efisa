@@ -22,13 +22,22 @@ function ApprovalStepper({ approvals, createdAt, actionableKeys, busyKey, remark
       <div className="flex items-start">
         {steps.map((step, index) => {
           const decided = step.approval.decision && step.approval.decision !== 'pending'
+          const isSelected = selected?.key === step.key
+          const isActive = !decided && index === firstPending
           const circleClass = !decided
-            ? 'border-[3px] border-indigo-500 bg-white text-indigo-500 group-hover:shadow-[0_0_12px_rgba(99,102,241,0.6)]'
+            ? isActive
+              ? 'border-[3px] border-indigo-500 bg-white text-indigo-500 group-hover:shadow-[0_0_12px_rgba(99,102,241,0.6)]'
+              : 'border-[3px] border-slate-300 bg-white text-slate-400'
             : step.approval.decision === 'rework'
               ? 'bg-orange-400 text-white group-hover:shadow-[0_0_12px_rgba(251,146,60,0.7)]'
               : step.approval.decision === 'rejected'
                 ? 'bg-rose-500 text-white group-hover:shadow-[0_0_12px_rgba(244,63,94,0.7)]'
                 : 'bg-emerald-500 text-white group-hover:shadow-[0_0_12px_rgba(16,185,129,0.7)]'
+          const selectRing = isSelected
+            ? ` ring-2 ring-offset-2 ${
+              !decided ? 'ring-indigo-400' : step.approval.decision === 'rework' ? 'ring-orange-400' : step.approval.decision === 'rejected' ? 'ring-rose-400' : 'ring-emerald-400'
+            }`
+            : ''
           return (
             <div key={step.key} className="relative flex-1">
               {index < steps.length - 1 ? (
@@ -43,11 +52,8 @@ function ApprovalStepper({ approvals, createdAt, actionableKeys, busyKey, remark
                 className="group flex w-full cursor-pointer flex-col items-center gap-1.5 text-center"
               >
                 <span
-className={`relative z-10 flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold transition ${circleClass}`}
+className={`relative z-10 flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold transition ${circleClass}${selectRing}`}
                 >
-                  {selected?.key === step.key ? (
-                    <span className="absolute -inset-1.5 animate-ping rounded-full bg-current opacity-25" />
-                  ) : null}
                   {index + 1}
                 </span>
                 <span className="text-sm font-bold text-slate-900">{STEP_LABELS[step.key]}</span>
