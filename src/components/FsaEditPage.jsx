@@ -46,20 +46,20 @@ function buildFormFromFsa(fsa) {
       ppap: (fsa.documents?.ppap ?? []).map((f) => ({ ...f, _existing: true })),
     },
     checklist: {
-      checkSheet: fsa.checklist?.checkSheet ?? 'not_available',
-      millCertificate: fsa.checklist?.millCertificate ?? 'not_available',
-      drawing: fsa.checklist?.drawing ?? 'not_available',
-      engineeringChangeDocument: fsa.checklist?.engineeringChangeDocument ?? 'not_available',
-      customerEngineeringApproval: fsa.checklist?.customerEngineeringApproval ?? 'not_available',
-      designFmea: fsa.checklist?.designFmea ?? 'not_available',
-      processFmea: fsa.checklist?.processFmea ?? 'not_available',
-      controlPlan: fsa.checklist?.controlPlan ?? 'not_available',
-      measurementSystemAnalysis: fsa.checklist?.measurementSystemAnalysis ?? 'not_available',
-      dimensionalMeasurement: fsa.checklist?.dimensionalMeasurement ?? 'not_available',
-      functionalTest: fsa.checklist?.functionalTest ?? 'not_available',
-      initialProcessStudies: fsa.checklist?.initialProcessStudies ?? 'not_available',
-      qualifiedLaboratoryDocumentation: fsa.checklist?.qualifiedLaboratoryDocumentation ?? 'not_available',
-      appearanceApprovalReport: fsa.checklist?.appearanceApprovalReport ?? 'not_available',
+      checkSheet: fsa.checklist?.checkSheet ?? '',
+      millCertificate: fsa.checklist?.millCertificate ?? '',
+      drawing: fsa.checklist?.drawing ?? '',
+      engineeringChangeDocument: fsa.checklist?.engineeringChangeDocument ?? '',
+      customerEngineeringApproval: fsa.checklist?.customerEngineeringApproval ?? '',
+      designFmea: fsa.checklist?.designFmea ?? '',
+      processFmea: fsa.checklist?.processFmea ?? '',
+      controlPlan: fsa.checklist?.controlPlan ?? '',
+      measurementSystemAnalysis: fsa.checklist?.measurementSystemAnalysis ?? '',
+      dimensionalMeasurement: fsa.checklist?.dimensionalMeasurement ?? '',
+      functionalTest: fsa.checklist?.functionalTest ?? '',
+      initialProcessStudies: fsa.checklist?.initialProcessStudies ?? '',
+      qualifiedLaboratoryDocumentation: fsa.checklist?.qualifiedLaboratoryDocumentation ?? '',
+      appearanceApprovalReport: fsa.checklist?.appearanceApprovalReport ?? '',
     },
     approvals: Object.fromEntries(
       APPROVAL_ORDER.map((key) => [
@@ -119,7 +119,7 @@ export default function FsaEditPage({ reference, user, onCancel, onSaved }) {
     if (documents.appearance) filled += 1
     if (documents.ppap.length) filled += 1
     if (Object.values(form.approvals).some((item) => item.approverId)) filled += 1
-    if (form.checklist.checkSheet !== 'not_available') filled += 1
+    if (form.checklist.checkSheet !== '') filled += 1
     return Math.round((filled / total) * 100)
   }, [form])
 
@@ -302,24 +302,18 @@ export default function FsaEditPage({ reference, user, onCancel, onSaved }) {
                     activeStep
                       ? 'border-sky-600 bg-sky-50'
                       : done
-                        ? 'border-emerald-200 bg-emerald-50 hover:bg-emerald-100'
+                        ? 'border-slate-200 bg-slate-50 hover:bg-slate-100'
                         : 'border-slate-200 bg-slate-50 hover:bg-slate-100'
                   }`}
                 >
                   <span
                     className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition ${
-                      done ? 'bg-emerald-500 text-white' : activeStep ? 'bg-sky-600 text-white' : 'bg-slate-200 text-slate-500'
+                      done ? 'bg-slate-200 text-slate-500' : activeStep ? 'bg-sky-600 text-white' : 'bg-slate-200 text-slate-500'
                     }`}
                   >
-                    {done ? (
-                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="m5 12 5 5L20 7" />
-                      </svg>
-                    ) : (
-                      index + 1
-                    )}
+                    {index + 1}
                   </span>
-                  <span className={`text-xs font-medium ${activeStep ? 'text-sky-700' : done ? 'text-emerald-700' : 'text-slate-500'}`}>
+                  <span className={`text-xs font-medium ${activeStep ? 'text-sky-700' : 'text-slate-500'}`}>
                     {step.label}
                   </span>
                 </button>
@@ -397,5 +391,5 @@ export default function FsaEditPage({ reference, user, onCancel, onSaved }) {
 
 function formatCreated(value) {
   if (!value) return '-'
-  return toLocalInputValue(new Date(value)).replace('T', ' ')
+  return `${toLocalInputValue(new Date(value)).replace('T', ' ')} WIB`
 }

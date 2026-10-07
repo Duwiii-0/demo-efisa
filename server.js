@@ -306,7 +306,13 @@ app.get('/api/files/:storedName', requireAuth, async (req, res, next) => {
         res.status(404).json({ error: 'File tidak ditemukan' })
         return
       }
-      res.setHeader('Content-Type', 'application/octet-stream')
+      const ext = path.extname(found.objectPath).toLowerCase()
+      const mimeByExt = {
+        '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
+        '.gif': 'image/gif', '.webp': 'image/webp', '.pdf': 'application/pdf',
+      }
+      res.setHeader('Content-Type', mimeByExt[ext] || 'application/octet-stream')
+      res.setHeader('Content-Disposition', 'inline')
       res.send(buffer)
       return
     }
@@ -316,7 +322,14 @@ app.get('/api/files/:storedName', requireAuth, async (req, res, next) => {
       res.status(404).json({ error: 'File tidak ditemukan' })
       return
     }
-    res.download(found.filePath)
+    const ext = path.extname(found.filePath).toLowerCase()
+    const mimeByExt = {
+      '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
+      '.gif': 'image/gif', '.webp': 'image/webp', '.pdf': 'application/pdf',
+    }
+    res.setHeader('Content-Type', mimeByExt[ext] || 'application/octet-stream')
+    res.setHeader('Content-Disposition', 'inline')
+    res.sendFile(found.filePath)
   } catch (error) {
     next(error)
   }

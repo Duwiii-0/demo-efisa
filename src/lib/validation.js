@@ -1,5 +1,3 @@
-export const PART_NUMBER_PATTERN = /^PART\d{8}$/
-
 export function splitParts(value) {
   return String(value ?? '')
     .toUpperCase()

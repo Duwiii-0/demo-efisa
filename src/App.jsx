@@ -110,9 +110,9 @@ function AppRoutes() {
               canCreate={session.user.role === 'procurement'}
               view="assigned"
               onCreate={() => navigate('/create')}
-              onOpenDetail={(id) => {
+              onOpenDetail={(id, options) => {
                 setFlash('')
-                navigate(`/fsa/${id}`)
+                navigate(options?.editable ? `/fsa/${id}?mode=edit` : `/fsa/${id}`)
               }}
             />
           }
@@ -125,9 +125,9 @@ function AppRoutes() {
               canCreate={session.user.role === 'procurement'}
               view="all"
               onCreate={() => navigate('/create')}
-              onOpenDetail={(id) => {
+              onOpenDetail={(id, options) => {
                 setFlash('')
-                navigate(`/fsa/${id}`)
+                navigate(options?.editable ? `/fsa/${id}?mode=edit` : `/fsa/${id}`)
               }}
             />
           }

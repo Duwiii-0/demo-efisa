@@ -1,7 +1,7 @@
 import { Field, Input, SectionCard, Select, Textarea } from '../ui.jsx'
 import { formatDateTime } from '../../lib/format.js'
 
-export default function GeneralInformationSection({ form, errors, reference, onChange, readOnly = false }) {
+export default function GeneralInformationSection({ form, errors, reference, onChange, readOnly = false, hideCreatedAt = false }) {
   const { general } = form
   const disabled = readOnly
   const set = (field) => (event) => onChange({ ...general, [field]: event.target.value })
@@ -106,7 +106,7 @@ export default function GeneralInformationSection({ form, errors, reference, onC
           </Select>
         </Field>
 
-        {general.createdAt ? (
+        {general.createdAt && !hideCreatedAt ? (
           <Field label="FSA Date of Creation">
             <Input value={formatDateTime(general.createdAt)} readOnly disabled />
           </Field>

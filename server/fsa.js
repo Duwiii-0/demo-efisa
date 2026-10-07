@@ -17,7 +17,6 @@ import {
 } from './store.js'
 import { MAX_FILES } from './uploads.js'
 
-const PART_NUMBER_PATTERN = /^PART\d{8}$/
 
 const DECISION_IDS = new Set(['pending', 'approved', 'rejected', 'rework'])
 const CHECKLIST_IDS = new Set(CHECKLIST_STATUSES.map((item) => item.id))
@@ -307,8 +306,8 @@ export async function updateFsa(fsaId, payload, actor) {
     .split(',')
     .map((part) => part.trim())
     .filter(Boolean)
-  if (partNumbers.length === 0 || partNumbers.some((part) => !PART_NUMBER_PATTERN.test(part))) {
-    errors.partNumber = 'Setiap part number harus format PART + 8 digit, dipisahkan koma (,)'
+  if (partNumbers.length === 0) {
+    errors.partNumber = 'Part number wajib diisi'
   }
   const partNumber = partNumbers.join(',')
 
@@ -497,8 +496,8 @@ export async function createFsa(payload, actor) {
     .split(',')
     .map((part) => part.trim())
     .filter(Boolean)
-  if (partNumbers.length === 0 || partNumbers.some((part) => !PART_NUMBER_PATTERN.test(part))) {
-    errors.partNumber = 'Setiap part number harus format PART + 8 digit, dipisahkan koma (,)'
+  if (partNumbers.length === 0) {
+    errors.partNumber = 'Part number wajib diisi'
   }
   const partNumber = partNumbers.join(',')
 
@@ -674,7 +673,9 @@ export async function updateDecision(fsaId, fnKey, payload, actor) {
     at: new Date().toISOString(),
     byId: actor.id,
     action: 'decision',
-    note: forceCancel ? `${fn.label}: rejected (FSA canceled)` : `${fn.label}: ${decision}`,
+    note: forceCancel
+      ? `${fn.label}: rejected (FSA canceled)`
+      : `${fn.label}: ${decision}${typeof payload?.remark === 'string' && payload.remark.trim() ? ` — "${payload.remark.trim()}"` : ''}`,
   })
 
   return saveFsaRow(fsa)

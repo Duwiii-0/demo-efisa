@@ -196,28 +196,22 @@ export default function FsaCreatePage({ reference, user, onCancel, onCreated }) 
                     activeStep
                       ? 'border-sky-600 bg-sky-50'
                       : done
-                        ? 'border-emerald-200 bg-emerald-50 hover:bg-emerald-100'
+                        ? 'border-slate-200 bg-slate-50 hover:bg-slate-100'
                         : 'border-slate-200 bg-slate-50 hover:bg-slate-100'
                   }`}
                 >
                   <span
                     className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition ${
                       done
-                        ? 'bg-emerald-500 text-white'
+                        ? 'bg-slate-200 text-slate-500'
                         : activeStep
                           ? 'bg-sky-600 text-white'
                           : 'bg-slate-200 text-slate-500'
                     }`}
                   >
-                    {done ? (
-                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="m5 12 5 5L20 7" />
-                      </svg>
-                    ) : (
-                      index + 1
-                    )}
+                    {index + 1}
                   </span>
-                  <span className={`text-xs font-medium ${activeStep ? 'text-sky-700' : done ? 'text-emerald-700' : 'text-slate-500'}`}>
+                  <span className={`text-xs font-medium ${activeStep ? 'text-sky-700' : 'text-slate-500'}`}>
                     {step.label}
                   </span>
                 </button>
@@ -235,6 +229,7 @@ export default function FsaCreatePage({ reference, user, onCancel, onCreated }) 
           errors={errors}
           reference={reference}
           onChange={setGeneral}
+          hideCreatedAt
         />
       ) : null}
 
