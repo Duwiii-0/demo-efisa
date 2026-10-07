@@ -59,6 +59,9 @@ function FsaTable({ items, reference, onOpenDetail, emptyText, onAct, busyId, so
                   <div>{formatTime(fsa.createdAt)} WIB</div>
                 </td>
                 <td className="px-5 py-3" onClick={(event) => event.stopPropagation()}>
+                  {busyId === fsa.id ? (
+                    <span className="text-xs font-medium text-slate-500">Menyimpan...</span>
+                  ) : (
                   <select
                     className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
                     defaultValue=""
@@ -77,6 +80,7 @@ function FsaTable({ items, reference, onOpenDetail, emptyText, onAct, busyId, so
                     <option value="reject">Reject</option>
                     <option value="rework">Rework</option>
                   </select>
+                  )}
                 </td>
               </tr>
             ))}
