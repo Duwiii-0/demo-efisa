@@ -140,7 +140,7 @@ function AppRoutes() {
               user={session.user}
               onCancel={() => navigate('/')}
               onCreated={(fsa) => {
-                setFlash(`FSA ${fsa.fsaNumber} berhasil dibuat dan menunggu approval.`)
+                setFlash(`FSA dengan id ${fsa.fsaNumber} berhasil dibuat dan menunggu approval.`)
                 navigate(`/fsa/${fsa.id}`)
               }}
             />
@@ -168,7 +168,7 @@ function AppRoutes() {
               user={session.user}
               onCancel={(id) => navigate(`/fsa/${id}`)}
               onSaved={(fsa) => {
-                setFlash(`FSA ${fsa.fsaNumber} berhasil diperbarui dan dikembalikan ke Waiting Approval SPR.`)
+                setFlash(`FSA dengan id ${fsa.fsaNumber} berhasil diperbarui dan dikembalikan ke Waiting Approval SPR.`)
                 navigate(`/fsa/${fsa.id}`)
               }}
             />
