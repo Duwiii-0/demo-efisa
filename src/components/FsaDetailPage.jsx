@@ -137,7 +137,7 @@ export default function FsaDetailPage({ reference, onBack, onEdit }) {
         <div className="flex items-center gap-3">
           {onEdit && fsa.approvalStatus === 'rework_required' && (fsa.approvals?.procurement?.approverId ? fsa.approvals?.procurement?.approverId === reference.me?.id : reference.me?.role === 'procurement') ? (
             <Button variant="warning" onClick={() => onEdit(fsa)}>
-              ✏️ Edit untuk Rework
+              Edit untuk Rework
             </Button>
           ) : null}
           <span className={badgeClass(fsa.approvalStatus, 'lg')}>{findName(reference.fsaStatuses, fsa.approvalStatus)}</span>
