@@ -317,9 +317,10 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, onFlash
               placeholder="Tulis catatan..."
             />
             <div className="mt-4 flex justify-end gap-2">
-              <Button variant="secondary" onClick={() => setPendingAction(null)}>Batal</Button>
+              <Button variant="secondary" onClick={() => setPendingAction(null)} disabled={busyId === pendingAction.fsa.id}>Batal</Button>
               <Button
                 variant={pendingAction.action === 'reject' ? 'danger' : 'primary'}
+                disabled={busyId === pendingAction.fsa.id}
                 onClick={() => {
                   if (pendingAction.action === 'reject' && !window.confirm('Reject akan langsung membatalkan (rejected) FSA ini. Lanjutkan?')) {
                     return
@@ -327,7 +328,9 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, onFlash
                   confirmDecision()
                 }}
               >
-                {pendingAction.action === 'approve' ? 'Approve' : pendingAction.action === 'reject' ? 'Reject' : 'Rework'}
+                {busyId === pendingAction.fsa.id
+                  ? 'Menyimpan...'
+                  : pendingAction.action === 'approve' ? 'Approve' : pendingAction.action === 'reject' ? 'Reject' : 'Rework'}
               </Button>
             </div>
           </div>
