@@ -313,7 +313,7 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, canCrea
               <Button
                 variant={pendingAction.action === 'reject' ? 'danger' : 'primary'}
                 onClick={() => {
-                  if (pendingAction.action === 'reject' && !window.confirm('Reject akan langsung membatalkan (canceled) FSA ini. Lanjutkan?')) {
+                  if (pendingAction.action === 'reject' && !window.confirm('Reject akan langsung membatalkan (rejected) FSA ini. Lanjutkan?')) {
                     return
                   }
                   confirmDecision()

@@ -38,8 +38,8 @@ export const FSA_STATUSES = [
   { id: 'waiting_approval_engineering', name: 'Waiting Approval Engineering' },
   { id: 'waiting_approval_quality', name: 'Waiting Approval Quality' },
   { id: 'waiting_approval_production', name: 'Waiting Approval Production' },
-  { id: 'accepted', name: 'Accepted' },
-  { id: 'canceled', name: 'Canceled' },
+  { id: 'accepted', name: 'Approved' },
+  { id: 'canceled', name: 'Rejected' },
   { id: 'rework_required', name: 'Rework Required' },
 ]
 

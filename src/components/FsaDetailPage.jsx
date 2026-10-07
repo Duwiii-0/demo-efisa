@@ -167,7 +167,7 @@ export default function FsaDetailPage({ reference, onBack, onEdit }) {
       setToast({
         tone: 'success',
         message: canceled
-          ? 'FSA dibatalkan (canceled).'
+          ? 'FSA dibatalkan (rejected).'
           : decision === 'approved'
             ? 'Keputusan approved berhasil disimpan.'
             : 'FSA dikembalikan untuk rework.',

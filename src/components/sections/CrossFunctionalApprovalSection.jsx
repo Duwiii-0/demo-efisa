@@ -115,7 +115,7 @@ className={`relative z-10 flex h-8 w-8 items-center justify-center rounded-full 
                   variant="danger"
                   disabled={busyKey === selected.key}
                   onClick={() => {
-                    if (window.confirm('Reject akan langsung membatalkan (canceled) FSA ini. Lanjutkan?')) {
+                    if (window.confirm('Reject akan langsung membatalkan (rejected) FSA ini. Lanjutkan?')) {
                       onDecide(selected.key, 'rejected', remarks[selected.key] ?? '', true)
                     }
                   }}
