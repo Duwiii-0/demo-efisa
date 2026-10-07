@@ -106,9 +106,11 @@ export default function GeneralInformationSection({ form, errors, reference, onC
           </Select>
         </Field>
 
-        <Field label="FSA Date of Creation">
-          <Input value={formatDateTime(general.createdAt)} readOnly disabled />
-        </Field>
+        {general.createdAt ? (
+          <Field label="FSA Date of Creation">
+            <Input value={formatDateTime(general.createdAt)} readOnly disabled />
+          </Field>
+        ) : null}
 
         {general.completedAt || readOnly ? (
           <Field label="Date of Completion" hint="Tercatat otomatis saat semua fungsi selesai approved">

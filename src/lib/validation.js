@@ -15,9 +15,8 @@ export function validateForm(form, users) {
   if (!general.ppapLevel) {
     errors.ppapLevel = 'FSA level wajib dipilih'
   }
-  const partNumbers = splitParts(general.partNumber)
-  if (partNumbers.length === 0 || partNumbers.some((part) => !PART_NUMBER_PATTERN.test(part))) {
-    errors.partNumber = 'Setiap part number harus format PART + 8 digit, dipisahkan koma (,). Contoh: PART01950185,PART02774310'
+  if (splitParts(general.partNumber).length === 0) {
+    errors.partNumber = 'Part number wajib diisi'
   }
   if (general.materialDescription.trim().length < 3) {
     errors.materialDescription = 'Material description minimal 3 karakter'

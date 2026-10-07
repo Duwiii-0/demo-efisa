@@ -6,9 +6,8 @@ const NAV_GROUPS = [
   {
     title: 'General',
     items: [
+      { to: '/data-fsa', label: 'Data FSA', icon: 'list' },
       { to: '/', label: 'FSA Assigned to You', end: true, icon: 'inbox' },
-      { to: '/in-progress', label: 'FSA In Progress', icon: 'clock' },
-      { to: '/history', label: 'FSA History', icon: 'archive' },
     ],
   },
 ]

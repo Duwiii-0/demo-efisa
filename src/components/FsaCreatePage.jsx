@@ -7,7 +7,7 @@ import DocumentReviewChecklistSection from './sections/DocumentReviewChecklistSe
 import CrossFunctionalApprovalSection from './sections/CrossFunctionalApprovalSection.jsx'
 import { emptyFsaForm } from '../lib/fsaForm.js'
 import { validateForm } from '../lib/validation.js'
-import { toLocalInputValue, todayInputValue } from '../lib/format.js'
+import { todayInputValue } from '../lib/format.js'
 
 export const STEPS = [
   { id: 'general', label: 'General Information' },
@@ -268,7 +268,7 @@ export default function FsaCreatePage({ reference, user, onCancel, onCreated }) 
 
       <footer className="sticky bottom-0 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-lg sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs text-slate-500">
-          Dibuat oleh <span className="font-semibold text-slate-700">{user.name}</span> - {formatCreated(form.general.createdAt)}
+          Dibuat oleh <span className="font-semibold text-slate-700">{user.name}</span>
         </p>
         <div className="flex gap-3">
           <Button type="button" variant="secondary" onClick={onCancel}>
@@ -292,9 +292,4 @@ export default function FsaCreatePage({ reference, user, onCancel, onCreated }) 
       </footer>
     </form>
   )
-}
-
-function formatCreated(value) {
-  if (!value) return '-'
-  return toLocalInputValue(new Date(value)).replace('T', ' ')
 }

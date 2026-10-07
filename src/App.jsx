@@ -118,27 +118,12 @@ function AppRoutes() {
           }
         />
         <Route
-          path="/in-progress"
+          path="/data-fsa"
           element={
             <FsaListPage
               reference={reference}
               canCreate={session.user.role === 'procurement'}
-              view="in-progress"
-              onCreate={() => navigate('/create')}
-              onOpenDetail={(id) => {
-                setFlash('')
-                navigate(`/fsa/${id}`)
-              }}
-            />
-          }
-        />
-        <Route
-          path="/history"
-          element={
-            <FsaListPage
-              reference={reference}
-              canCreate={session.user.role === 'procurement'}
-              view="history"
+              view="all"
               onCreate={() => navigate('/create')}
               onOpenDetail={(id) => {
                 setFlash('')

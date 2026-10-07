@@ -4,7 +4,7 @@ import { Alert, Button, Card, Spinner } from './ui.jsx'
 import { badgeClass, findName, formatDateTime } from '../lib/format.js'
 import { assignedActionableKeys } from '../lib/fsaForm.js'
 
-function FsaTable({ items, reference, onOpenDetail, emptyText, onAct, busyId }) {
+function FsaTable({ items, reference, onOpenDetail, emptyText, onAct, busyId, sort, onToggleSort }) {
   if (items.length === 0) {
     return (
       <Card>
@@ -19,12 +19,22 @@ function FsaTable({ items, reference, onOpenDetail, emptyText, onAct, busyId }) 
         <table className="w-full min-w-3xl text-left text-sm">
           <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
             <tr>
-              <th className="px-5 py-3 font-semibold">FSA Number</th>
+              <th
+                className="cursor-pointer select-none px-5 py-3 font-semibold hover:text-slate-700"
+                onClick={() => onToggleSort('fsaNumber')}
+              >
+                FSA Number <span className={`inline-flex items-center align-middle text-[9px] leading-none ${sort.field === 'fsaNumber' ? '' : 'opacity-40'}`}>{sort.field === 'fsaNumber' ? (sort.dir === 'asc' ? '▲' : '▼') : '▲▼'}</span>
+              </th>
               <th className="px-5 py-3 font-semibold">Part Number</th>
               <th className="px-5 py-3 font-semibold">Material</th>
               <th className="px-5 py-3 font-semibold">Supplier</th>
               <th className="px-5 py-3 text-center font-semibold">Status</th>
-              <th className="px-5 py-3 font-semibold">Created</th>
+              <th
+                className="cursor-pointer select-none px-5 py-3 font-semibold hover:text-slate-700"
+                onClick={() => onToggleSort('createdAt')}
+              >
+                Created <span className={`inline-flex items-center align-middle text-[9px] leading-none ${sort.field === 'createdAt' ? '' : 'opacity-40'}`}>{sort.field === 'createdAt' ? (sort.dir === 'desc' ? '▼' : '▲') : '▲▼'}</span>
+              </th>
               <th className="px-5 py-3 font-semibold">Aksi</th>
             </tr>
           </thead>
@@ -82,7 +92,7 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, canCrea
   const [actionError, setActionError] = useState('')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
-  const [sortOrder, setSortOrder] = useState('latest')
+  const [sort, setSort] = useState({ field: 'createdAt', dir: 'desc' })
   const me = reference.me
 
   useEffect(() => {
@@ -109,28 +119,18 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, canCrea
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
   }, [items, me])
 
-  const inProgress = useMemo(() => {
+  const all = useMemo(() => {
     if (!items) return null
-    return items
-      .filter((fsa) => !['accepted', 'canceled'].includes(fsa.approvalStatus))
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-  }, [items])
-
-  const history = useMemo(() => {
-    if (!items) return null
-    return items
-      .filter((fsa) => ['accepted', 'canceled'].includes(fsa.approvalStatus))
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    return [...items].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
   }, [items])
 
   const titles = {
     assigned: ['FSA Assigned to You', ''],
-    'in-progress': ['FSA In Progress', ''],
-    history: ['FSA History', ''],
+    all: ['Data FSA', ''],
   }
   const [title, subtitle] = titles[view] ?? titles.assigned
 
-  const baseList = view === 'assigned' ? assigned : view === 'in-progress' ? inProgress : history
+  const baseList = view === 'assigned' ? assigned : view === 'all' ? all : assigned
 
   const viewStatusOptions = useMemo(() => {
     if (!baseList) return []
@@ -150,8 +150,18 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, canCrea
         }
         return true
       })
-      .sort((a, b) => (sortOrder === 'latest' ? b.createdAt.localeCompare(a.createdAt) : a.createdAt.localeCompare(b.createdAt)))
-  }, [baseList, search, statusFilter, sortOrder, reference.suppliers])
+      .sort((a, b) => {
+        if (sort.field === 'fsaNumber') {
+          const keyOf = (value) => {
+            const parts = String(value ?? '').match(/\d+/g)
+            return parts ? parts.map((part) => part.padStart(12, '0')).join('-') : String(value ?? '')
+          }
+          const result = keyOf(a.fsaNumber).localeCompare(keyOf(b.fsaNumber))
+          return sort.dir === 'asc' ? result : -result
+        }
+        return sort.dir === 'desc' ? b.createdAt.localeCompare(a.createdAt) : a.createdAt.localeCompare(b.createdAt)
+      })
+  }, [baseList, search, statusFilter, sort, reference.suppliers])
 
   async function handleAction(fsa, action) {
     if (action === 'show') {
@@ -231,14 +241,7 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, canCrea
               </option>
             ))}
           </select>
-          <select
-            className="min-w-0 w-40 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
-            value={sortOrder}
-            onChange={(event) => setSortOrder(event.target.value)}
-          >
-            <option value="latest">Terbaru</option>
-            <option value="earliest">Terlama</option>
-          </select>
+
           {(search || statusFilter) ? (
             <Button
               variant="secondary"
@@ -260,14 +263,22 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, canCrea
           onOpenDetail={onOpenDetail}
           onAct={handleAction}
           busyId={busyId}
+          sort={sort}
+          onToggleSort={(field) =>
+            setSort((current) =>
+              current.field === field
+                ? { field, dir: current.dir === 'asc' ? 'desc' : 'asc' }
+                : { field, dir: field === 'createdAt' ? 'desc' : 'asc' },
+            )
+          }
           emptyText={
             baseList && baseList.length > 0
               ? 'Tidak ada data yang cocok dengan filter.'
               : view === 'assigned'
                 ? 'Tidak ada FSA yang ditugaskan ke Anda.'
-                : view === 'in-progress'
-                  ? 'Tidak ada FSA yang sedang berjalan.'
-                  : 'Belum ada riwayat FSA.'
+                : view === 'all'
+                ? 'Belum ada data FSA.'
+                : 'Tidak ada FSA yang ditugaskan ke Anda.'
           }
         />
       )}
