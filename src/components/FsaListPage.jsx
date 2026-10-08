@@ -12,18 +12,12 @@ export function partChipClass(status) {
 }
 
 function FsaTable({ items, reference, onOpenDetail, emptyText, onAct, busyId, sort, onToggleSort, materialMap = {}, showActions = true }) {
-  if (items.length === 0) {
-    return (
-      <Card>
-        <p className="px-5 py-10 text-center text-sm text-slate-500">{emptyText}</p>
-      </Card>
-    )
-  }
+  const colCount = showActions ? 7 : 6
 
   return (
     <Card>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-3xl text-left text-sm">
+        <table className="w-full min-w-3xl table-auto text-left text-sm">
           <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
             <tr>
               <th
@@ -32,27 +26,34 @@ function FsaTable({ items, reference, onOpenDetail, emptyText, onAct, busyId, so
               >
                 FSA Number <span className={`inline-flex items-center align-middle text-[9px] leading-none ${sort.field === 'fsaNumber' ? '' : 'opacity-40'}`}>{sort.field === 'fsaNumber' ? (sort.dir === 'asc' ? '▲' : '▼') : '▲▼'}</span>
               </th>
-              <th className="whitespace-nowrap px-5 py-3 font-semibold">Part Number</th>
-              <th className="px-5 py-3 font-semibold">Material</th>
-              <th className="px-5 py-3 font-semibold">Supplier</th>
-              <th className="px-5 py-3 text-center font-semibold">Status</th>
+              <th className="w-40 whitespace-nowrap px-5 py-3 font-semibold">Part Number</th>
+              <th className="min-w-64 px-5 py-3 font-semibold">Material</th>
+              <th className="min-w-40 whitespace-nowrap px-5 py-3 font-semibold">Supplier</th>
+              <th className="w-36 whitespace-nowrap px-5 py-3 text-center font-semibold">Status</th>
               <th
                 className="cursor-pointer select-none whitespace-nowrap px-5 py-3 text-center font-semibold hover:text-slate-700"
                 onClick={() => onToggleSort('createdAt')}
               >
                 Created <span className={`inline-flex items-center align-middle text-[9px] leading-none ${sort.field === 'createdAt' ? '' : 'opacity-40'}`}>{sort.field === 'createdAt' ? (sort.dir === 'desc' ? '▼' : '▲') : '▲▼'}</span>
               </th>
-              {showActions ? <th className="px-5 py-3 text-center font-semibold">Aksi</th> : null}
+              {showActions ? <th className="w-32 whitespace-nowrap px-5 py-3 text-center font-semibold">Aksi</th> : null}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {items.map((fsa) => (
+            {items.length === 0 ? (
+              <tr>
+                <td colSpan={colCount} className="px-5 py-10 text-center text-sm text-slate-500">
+                  {emptyText}
+                </td>
+              </tr>
+            ) : (
+            items.map((fsa) => (
               <tr
                 key={fsa.id}
                 onClick={() => onOpenDetail(fsa.id, showActions ? { editable: true } : undefined)}
                 className="cursor-pointer transition hover:bg-sky-50/60"
               >
-                <td className="px-5 py-3 text-xs font-semibold text-sky-700">{fsa.fsaNumber}</td>
+                <td className="whitespace-nowrap px-5 py-3 text-xs font-semibold text-sky-700">{fsa.fsaNumber}</td>
                 <td className="px-5 py-3">
                   <div className="flex max-w-56 flex-wrap gap-1">
                     {splitParts(fsa.partNumber).map((part, idx) => {
@@ -70,18 +71,18 @@ function FsaTable({ items, reference, onOpenDetail, emptyText, onAct, busyId, so
                   </div>
                 </td>
                 <td className="max-w-xs truncate px-5 py-3 text-slate-600">{fsa.materialDescription}</td>
-                <td className="px-5 py-3 text-slate-600">{findName(reference.suppliers, fsa.supplierId)}</td>
+                <td className="min-w-40 whitespace-nowrap px-5 py-3 text-slate-600">{findName(reference.suppliers, fsa.supplierId)}</td>
                 <td className="px-5 py-3 text-center [&>span]:max-w-32 [&>span]:text-center [&>span]:whitespace-normal [&>span]:leading-tight">
                   <span className={badgeClass(fsa.approvalStatus)}>
                     {findName(reference.fsaStatuses, fsa.approvalStatus)}
                   </span>
                 </td>
-                <td className="px-5 py-3 text-center text-slate-500">
+                <td className="whitespace-nowrap px-5 py-3 text-center text-slate-500">
                   <div>{formatDate(fsa.createdAt)}</div>
                   <div>{formatTime(fsa.createdAt)} WIB</div>
                 </td>
                 {showActions ? (
-                <td className="px-5 py-3" onClick={(event) => event.stopPropagation()}>
+                <td className="whitespace-nowrap px-5 py-3" onClick={(event) => event.stopPropagation()}>
                   {Object.values(fsa.approvals ?? {}).some((approval) => approval?.approverId === reference.me?.id) ? (
                     busyId === fsa.id ? (
                     <span className="text-xs font-medium text-slate-500">Menyimpan...</span>
@@ -111,7 +112,8 @@ function FsaTable({ items, reference, onOpenDetail, emptyText, onAct, busyId, so
                 </td>
                 ) : null}
               </tr>
-            ))}
+            ))
+            )}
           </tbody>
         </table>
       </div>
