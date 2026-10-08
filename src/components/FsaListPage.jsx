@@ -3,8 +3,14 @@ import { api } from '../lib/api.js'
 import { Alert, Button, Card, Spinner } from './ui.jsx'
 import { badgeClass, findName, formatDate, formatTime } from '../lib/format.js'
 import { assignedActionableKeys } from '../lib/fsaForm.js'
+import { splitParts } from '../lib/validation.js'
 
-function FsaTable({ items, reference, onOpenDetail, emptyText, onAct, busyId, sort, onToggleSort }) {
+export function partChipClass(status) {
+  if (status === 'master') return 'border-emerald-300 bg-emerald-100 text-emerald-800'
+  return 'border-amber-300 bg-amber-100 text-amber-800'
+}
+
+function FsaTable({ items, reference, onOpenDetail, emptyText, onAct, busyId, sort, onToggleSort, materialMap = {}, showActions = true }) {
   if (items.length === 0) {
     return (
       <Card>
@@ -35,18 +41,33 @@ function FsaTable({ items, reference, onOpenDetail, emptyText, onAct, busyId, so
               >
                 Created <span className={`inline-flex items-center align-middle text-[9px] leading-none ${sort.field === 'createdAt' ? '' : 'opacity-40'}`}>{sort.field === 'createdAt' ? (sort.dir === 'desc' ? '▼' : '▲') : '▲▼'}</span>
               </th>
-              <th className="px-5 py-3 text-center font-semibold">Aksi</th>
+              {showActions ? <th className="px-5 py-3 text-center font-semibold">Aksi</th> : null}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {items.map((fsa) => (
               <tr
                 key={fsa.id}
-                onClick={() => onOpenDetail(fsa.id, { editable: true })}
+                onClick={() => onOpenDetail(fsa.id, showActions ? { editable: true } : undefined)}
                 className="cursor-pointer transition hover:bg-sky-50/60"
               >
                 <td className="px-5 py-3 text-xs font-semibold text-sky-700">{fsa.fsaNumber}</td>
-                <td className="px-5 py-3 font-mono text-xs">{fsa.partNumber}</td>
+                <td className="px-5 py-3">
+                  <div className="flex max-w-56 flex-wrap gap-1">
+                    {splitParts(fsa.partNumber).map((part, idx) => {
+                      const status = materialMap[part]?.status ?? null
+                      return (
+                        <span
+                          key={`${part}-${idx}`}
+                          title={status === 'master' ? 'Terdaftar di master' : 'Material baru / tidak di master'}
+                          className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 font-mono text-[11px] font-semibold ${partChipClass(status)}`}
+                        >
+                          {part}
+                        </span>
+                      )
+                    })}
+                  </div>
+                </td>
                 <td className="max-w-xs truncate px-5 py-3 text-slate-600">{fsa.materialDescription}</td>
                 <td className="px-5 py-3 text-slate-600">{findName(reference.suppliers, fsa.supplierId)}</td>
                 <td className="px-5 py-3 text-center [&>span]:max-w-32 [&>span]:text-center [&>span]:whitespace-normal [&>span]:leading-tight">
@@ -58,8 +79,10 @@ function FsaTable({ items, reference, onOpenDetail, emptyText, onAct, busyId, so
                   <div>{formatDate(fsa.createdAt)}</div>
                   <div>{formatTime(fsa.createdAt)} WIB</div>
                 </td>
+                {showActions ? (
                 <td className="px-5 py-3" onClick={(event) => event.stopPropagation()}>
-                  {busyId === fsa.id ? (
+                  {Object.values(fsa.approvals ?? {}).some((approval) => approval?.approverId === reference.me?.id) ? (
+                    busyId === fsa.id ? (
                     <span className="text-xs font-medium text-slate-500">Menyimpan...</span>
                   ) : (
                   <select
@@ -80,8 +103,12 @@ function FsaTable({ items, reference, onOpenDetail, emptyText, onAct, busyId, so
                     <option value="reject">Reject</option>
                     <option value="rework">Rework</option>
                   </select>
+                    )
+                  ) : (
+                    <span className="text-xs text-slate-300">-</span>
                   )}
                 </td>
+                ) : null}
               </tr>
             ))}
           </tbody>
@@ -102,6 +129,7 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, onFlash
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [sort, setSort] = useState({ field: 'createdAt', dir: 'desc' })
+  const [materialMap, setMaterialMap] = useState({})
   const me = reference.me
 
   useEffect(() => {
@@ -171,6 +199,24 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, onFlash
         return sort.dir === 'desc' ? b.createdAt.localeCompare(a.createdAt) : a.createdAt.localeCompare(b.createdAt)
       })
   }, [baseList, search, statusFilter, sort, reference.suppliers])
+
+  // Batch lookup status master untuk semua part yang tampil (hijau=master, kuning=baru).
+  useEffect(() => {
+    if (!visible || visible.length === 0) return
+    const uniq = [...new Set(visible.flatMap((fsa) => splitParts(fsa.partNumber)))].filter(
+      (part) => !materialMap[part],
+    )
+    if (uniq.length === 0) return
+    let active = true
+    api
+      .batchLookupMaterials(uniq)
+      .then((data) => active && setMaterialMap((prev) => ({ ...prev, ...(data.results ?? {}) })))
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible])
 
   async function handleAction(fsa, action) {
     if (action === 'show') {
@@ -283,6 +329,8 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, onFlash
           onAct={handleAction}
           busyId={busyId}
           sort={sort}
+          materialMap={materialMap}
+          showActions={view !== 'all'}
           onToggleSort={(field) =>
             setSort((current) =>
               current.field === field
