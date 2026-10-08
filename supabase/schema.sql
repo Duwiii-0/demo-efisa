@@ -59,7 +59,26 @@ create table if not exists public.sessions (
 alter table public.sessions
   add column if not exists expires_at timestamptz not null default (now() + interval '7 days');
 
--- 4) Storage bucket untuk upload (appearance + PPAP, maks 10MB/file)
+-- 4) Materials: master (hijau) vs custom/baru (kuning).
+-- Hijau HANYA jika ada di master_materials. custom_materials tetap kuning.
+-- material_description boleh '' karena master seed awal hanya berisi part number.
+create table if not exists public.master_materials (
+  part_number text primary key,
+  material_description text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create table if not exists public.custom_materials (
+  part_number text primary key,
+  material_description text not null default '',
+  first_fsa_id uuid references public.fsas (id) on delete set null,
+  created_by_id text references public.users (id) on delete set null,
+  created_at timestamptz not null default now()
+);
+create index if not exists master_materials_desc_idx on public.master_materials (material_description);
+create index if not exists custom_materials_created_idx on public.custom_materials (created_at desc);
+
+-- 5) Storage bucket untuk upload (appearance + PPAP, maks 10MB/file)
 insert into storage.buckets (id, name, public)
 values ('efisa-uploads', 'efisa-uploads', false)
 on conflict (id) do nothing;
@@ -69,6 +88,8 @@ on conflict (id) do nothing;
 alter table public.users disable row level security;
 alter table public.fsas disable row level security;
 alter table public.sessions disable row level security;
+alter table public.master_materials disable row level security;
+alter table public.custom_materials disable row level security;
 
 -- Kebijakan storage (pakai service_role di backend, jadi tidak butuh policy publik).
 -- Jika RLS storage aktif, tambahkan policy ini di Dashboard > Storage > Policies:

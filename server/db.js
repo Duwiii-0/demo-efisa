@@ -8,8 +8,27 @@ const rootDir = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
 const dataDir = path.join(rootDir, 'server', 'data')
 const dbFile = path.join(dataDir, 'db.json')
 const uploadsDir = path.join(rootDir, 'server', 'uploads')
+const masterFile = path.join(rootDir, 'server', 'masterMaterials.json')
 
 let state = null
+
+// Master part + desc (sumber: server/masterMaterials.json hasil import data).
+function loadMasterSeed() {
+  try {
+    const arr = JSON.parse(fs.readFileSync(masterFile, 'utf8'))
+    if (!Array.isArray(arr)) return []
+    const now = new Date().toISOString()
+    return arr
+      .map((row) => ({
+        partNumber: String(row.partNumber ?? '').trim().toUpperCase(),
+        materialDescription: String(row.materialDescription ?? '').trim(),
+      }))
+      .filter((row) => row.partNumber)
+      .map((row) => ({ ...row, createdAt: now, updatedAt: now }))
+  } catch {
+    return []
+  }
+}
 
 function ensureDirs() {
   fs.mkdirSync(dataDir, { recursive: true })
@@ -18,8 +37,10 @@ function ensureDirs() {
 
 function initialState() {
   return {
-    version: 1,
+    version: 3,
     users: USERS,
+    masterMaterials: loadMasterSeed(),
+    customMaterials: [],
     fsas: SAMPLE_FSAS.map((fsa) => ({
       id: randomUUID(),
       ...fsa,
@@ -113,8 +134,35 @@ function load() {
 
   try {
     const parsed = JSON.parse(fs.readFileSync(dbFile, 'utf8'))
+    // Migrasi: (re)seed master dari masterMaterials.json agar desc ikut masuk.
+    // Baris custom lokal yang sudah ada dipertahankan.
+    const seedRows = loadMasterSeed()
+    let masterDirty = true
+    if (!Array.isArray(parsed.masterMaterials) || (parsed.version ?? 0) < 3) {
+      parsed.masterMaterials = seedRows
+    } else {
+      // v3+: tambahkan part baru & backfill desc yang masih kosong
+      masterDirty = false
+      const byPart = new Map(parsed.masterMaterials.map((m) => [m.partNumber, m]))
+      const now = new Date().toISOString()
+      for (const row of seedRows) {
+        const existing = byPart.get(row.partNumber)
+        if (!existing) {
+          parsed.masterMaterials.push(row)
+          masterDirty = true
+        } else if (!existing.materialDescription && row.materialDescription) {
+          existing.materialDescription = row.materialDescription
+          existing.updatedAt = now
+          masterDirty = true
+        }
+      }
+    }
+    if (!Array.isArray(parsed.customMaterials)) {
+      parsed.customMaterials = []
+    }
+    parsed.version = 3
     // Auto-repair saat load agar data lama yang meloncat langsung berurut
-    let dirty = false
+    let dirty = masterDirty
     for (const fsa of parsed.fsas ?? []) {
       if (repairFsaInPlace(fsa).length > 0) dirty = true
     }

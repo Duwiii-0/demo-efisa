@@ -102,6 +102,10 @@ export const SUPPLIERS = [
   { id: 'sup-05', name: 'PT Tekno Komponen Nusantara' },
 ]
 
+// Master material (part number + description) kini tinggal di
+// server/masterMaterials.json (hasil import data, dibaca oleh server/db.js
+// dan supabase/seed.mjs). Hijau hanya jika ada di master_materials.
+
 export const DIVISIONS = [
   { id: 'DM', name: 'DM' },
   { id: 'FT', name: 'FT' },
