@@ -24,7 +24,7 @@ function buildFormFromFsa(fsa) {
       partNumber: fsa.partNumber,
       materialDescription: fsa.materialDescription,
       drawingRevision: fsa.drawingRevision ?? 0,
-      sourcingVolume: fsa.sourcingVolume ?? 0,
+      sourcingVolume: fsa.sourcingVolume ?? '',
       supplierId: fsa.supplierId,
       categoryId: fsa.categoryId,
       categoryOther: fsa.categoryOther ?? '',

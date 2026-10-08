@@ -311,8 +311,11 @@ export default function GeneralInformationSection({ form, errors, reference, onC
           <Input type="number" min="0" step="1" value={general.drawingRevision} onChange={setNumber('drawingRevision')} placeholder="0" invalid={Boolean(errors.drawingRevision)} disabled={disabled} />
         </Field>
 
-        <Field label="Sourcing Volume" error={errors.sourcingVolume}>
-          <Input type="number" min="0" step="1" value={general.sourcingVolume ?? ''} onChange={setNumber('sourcingVolume')} placeholder="0" invalid={Boolean(errors.sourcingVolume)} disabled={disabled} />
+        <Field label="Sourcing Volume (Rp)" error={errors.sourcingVolume}>
+          <div className="relative">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">Rp</span>
+            <Input type="number" min="0" step="1" value={general.sourcingVolume ?? ''} onChange={setNumber('sourcingVolume')} placeholder="Contoh: 1500000" invalid={Boolean(errors.sourcingVolume)} disabled={disabled} style={{ paddingLeft: '2.5rem' }} />
+          </div>
         </Field>
 
         <Field label="Date of Sample Submission" required error={errors.dateOfSampleSubmission}>

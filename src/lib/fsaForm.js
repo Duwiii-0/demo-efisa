@@ -134,7 +134,7 @@ export const emptyFsaForm = () => ({
     partNumber: '',
     materialDescription: '',
     drawingRevision: 0,
-    sourcingVolume: 0,
+    sourcingVolume: '',
     supplierId: '',
     categoryId: '',
     categoryOther: '',
