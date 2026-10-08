@@ -7,6 +7,7 @@ import { splitParts } from '../lib/validation.js'
 
 export function partChipClass(status) {
   if (status === 'master') return 'border-emerald-300 bg-emerald-100 text-emerald-800'
+  if (!status) return 'border-slate-200 bg-slate-100 text-slate-400'
   return 'border-amber-300 bg-amber-100 text-amber-800'
 }
 
@@ -59,9 +60,9 @@ function FsaTable({ items, reference, onOpenDetail, emptyText, onAct, busyId, so
                       return (
                         <span
                           key={`${part}-${idx}`}
-                          title={status === 'master' ? 'Terdaftar di master' : 'Material baru / tidak di master'}
                           className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 font-mono text-[11px] font-semibold ${partChipClass(status)}`}
                         >
+                          <span className="h-1.5 w-1.5 rounded-full bg-current" />
                           {part}
                         </span>
                       )
@@ -128,6 +129,7 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, onFlash
   const [actionError, setActionError] = useState('')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [availabilityFilter, setAvailabilityFilter] = useState('')
   const [sort, setSort] = useState({ field: 'createdAt', dir: 'desc' })
   const [materialMap, setMaterialMap] = useState({})
   const me = reference.me
@@ -181,6 +183,14 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, onFlash
     return baseList
       .filter((fsa) => {
         if (statusFilter && fsa.approvalStatus !== statusFilter) return false
+        if (availabilityFilter) {
+          const parts = splitParts(fsa.partNumber)
+          if (parts.length === 0) return false
+          const isAvailable = parts.every((part) => materialMap[part]?.status === 'master')
+          const isNotAvailable = parts.some((part) => materialMap[part] && materialMap[part].status !== 'master')
+          if (availabilityFilter === 'available' && !isAvailable) return false
+          if (availabilityFilter === 'not_available' && !isNotAvailable) return false
+        }
         if (keyword) {
           const haystack = `${fsa.fsaNumber} ${fsa.partNumber} ${fsa.materialDescription} ${findName(reference.suppliers, fsa.supplierId)}`.toLowerCase()
           if (!haystack.includes(keyword)) return false
@@ -198,12 +208,12 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, onFlash
         }
         return sort.dir === 'desc' ? b.createdAt.localeCompare(a.createdAt) : a.createdAt.localeCompare(b.createdAt)
       })
-  }, [baseList, search, statusFilter, sort, reference.suppliers])
+  }, [baseList, search, statusFilter, availabilityFilter, materialMap, sort, reference.suppliers])
 
-  // Batch lookup status master untuk semua part yang tampil (hijau=master, kuning=baru).
+  // Batch lookup status master untuk semua part (hijau=master, kuning=baru).
   useEffect(() => {
-    if (!visible || visible.length === 0) return
-    const uniq = [...new Set(visible.flatMap((fsa) => splitParts(fsa.partNumber)))].filter(
+    if (!baseList || baseList.length === 0) return
+    const uniq = [...new Set(baseList.flatMap((fsa) => splitParts(fsa.partNumber)))].filter(
       (part) => !materialMap[part],
     )
     if (uniq.length === 0) return
@@ -216,7 +226,7 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, onFlash
       active = false
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible])
+  }, [baseList])
 
   async function handleAction(fsa, action) {
     if (action === 'show') {
@@ -307,11 +317,21 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, onFlash
             ))}
           </select>
 
-          {(search || statusFilter) ? (
+          <select
+            className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+            value={availabilityFilter}
+            onChange={(event) => setAvailabilityFilter(event.target.value)}
+          >
+            <option value="">Semua part</option>
+            <option value="available">Available</option>
+            <option value="not_available">Not available</option>
+          </select>
+
+          {(search || statusFilter || availabilityFilter) ? (
             <Button
               variant="secondary"
               className="shrink-0 whitespace-nowrap"
-              onClick={() => { setSearch(''); setStatusFilter('') }}
+              onClick={() => { setSearch(''); setStatusFilter(''); setAvailabilityFilter('') }}
             >
               Reset
             </Button>
