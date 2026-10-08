@@ -58,13 +58,13 @@ export default function PpapDocumentsSection({ form, errors, onChange, fsaId }) 
 
   const setDocuments = (next) => onChange({ ...documents, ...next })
 
-  async function handleAppearance(files) {
+  async function handleProductPhoto(files) {
     setLocalError('')
     const file = files[0]
     if (!file) return
 
     if (!isImage(file)) {
-      setLocalError('File appearance harus berupa gambar (jpg/png/webp)')
+      setLocalError('File product photo harus berupa gambar (jpg/png/webp)')
       return
     }
     if (file.size > MAX_FILE_SIZE) {
@@ -76,7 +76,7 @@ export default function PpapDocumentsSection({ form, errors, onChange, fsaId }) 
     try {
       const compressed = await compressImage(file)
       const meta = await uploadToStorage(compressed, fsaId)
-      setDocuments({ appearance: { ...meta, localPreview: URL.createObjectURL(compressed) } })
+      setDocuments({ productPhoto: { ...meta, localPreview: URL.createObjectURL(compressed) } })
     } catch (err) {
       setLocalError(err.message)
     } finally {
@@ -119,35 +119,35 @@ export default function PpapDocumentsSection({ form, errors, onChange, fsaId }) 
       {uploading ? <p className="mb-4 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-medium text-sky-700">Mengunggah file...</p> : null}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Field label="Appearance" required error={errors.appearance} hint="Upload 1 foto part (maks 10 MB)">
+        <Field label="Product Photo" required error={errors.productPhoto} hint="Upload 1 foto part (maks 10 MB)">
           <div className="space-y-3">
             <UploadButton
               accept="image/*"
-              label={documents.appearance ? 'Ganti foto' : 'Upload foto'}
-              onPick={handleAppearance}
+              label={documents.productPhoto ? 'Ganti foto' : 'Upload foto'}
+              onPick={handleProductPhoto}
               disabled={uploading}
             />
-            {documents.appearance ? (
+            {documents.productPhoto ? (
               <ul className="space-y-2">
-                {documents.appearance._existing ? (
+                {documents.productPhoto._existing ? (
                   <li className="overflow-hidden rounded-lg border border-slate-200 bg-slate-100 px-4 py-6 text-center text-sm text-slate-500">
-                    📷 {documents.appearance.fileName}
+                    📷 {documents.productPhoto.fileName}
                     <span className="ml-2 text-xs text-slate-400">(file tersimpan di server)</span>
                   </li>
                 ) : (
                   <li className="overflow-hidden rounded-lg border border-slate-200">
                     <img
-                      src={documents.appearance.localPreview ?? ''}
-                      alt="Preview appearance"
+                      src={documents.productPhoto.localPreview ?? ''}
+                      alt="Preview product photo"
                       className="h-40 w-full object-cover"
                     />
                   </li>
                 )}
-                <FileRow file={documents.appearance} onRemove={() => setDocuments({ appearance: null })} />
+                <FileRow file={documents.productPhoto} onRemove={() => setDocuments({ productPhoto: null })} />
               </ul>
             ) : (
               <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-4 text-sm text-slate-500">
-                Belum ada foto appearance yang diunggah.
+                Belum ada foto product photo yang diunggah.
               </p>
             )}
           </div>

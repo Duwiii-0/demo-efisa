@@ -146,7 +146,7 @@ export const emptyFsaForm = () => ({
     verifierDmId: '',
     verifierFtId: '',
   },
-  documents: { appearance: null, ppap: [] },
+  documents: { productPhoto: null, ppap: [] },
   checklist: {
     checkSheet: '',
     millCertificate: '',

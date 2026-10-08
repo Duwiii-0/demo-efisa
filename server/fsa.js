@@ -171,10 +171,10 @@ function normalizeDocuments(raw, errors) {
     errors['ppapDocuments'] = `Maksimal ${MAX_FILES} file FSA`
   }
 
-  const appearance = raw?.appearance ?? null
+  const productPhoto = raw?.productPhoto ?? raw?.appearance ?? null
 
-  if (appearance && !appearance.mime?.startsWith('image/')) {
-    errors['appearance'] = 'File appearance harus berupa gambar'
+  if (productPhoto && !productPhoto.mime?.startsWith('image/')) {
+    errors['productPhoto'] = 'File product photo harus berupa gambar'
   }
 
   const ppap = rawPpap.slice(0, MAX_FILES).map((file) => ({
@@ -185,7 +185,7 @@ function normalizeDocuments(raw, errors) {
     uploadedAt: file.uploadedAt ?? new Date().toISOString(),
   }))
 
-  return { appearance, ppap }
+  return { productPhoto, ppap }
 }
 
 function normalizeChecklist(raw, errors) {
@@ -397,24 +397,26 @@ export async function updateFsa(fsaId, payload, actor) {
     errors.verifierFt = 'Verifikator FT wajib dipilih'
   }
 
-  // Documents: appearance dan ppap diproses secara independen.
-  // null appearance = pertahankan yang lama; ppap baru ditambahkan ke yang lama.
+  // Documents: productPhoto dan ppap diproses secara independen.
+  // null productPhoto = pertahankan yang lama; ppap baru ditambahkan ke yang lama.
   let documents = { ...fsa.documents }
   if (payload?.documents) {
-    const { appearance: rawAppearance, ppap: rawPpap } = payload.documents ?? {}
+    const { productPhoto: rawProductPhoto, appearance: rawLegacy, ppap: rawPpap } = payload.documents ?? {}
+    const rawPhoto = rawProductPhoto !== undefined ? rawProductPhoto : rawLegacy
 
-    // Appearance: hanya replace jika ada file baru (bukan null)
-    if (rawAppearance !== null && rawAppearance !== undefined) {
-      if (!rawAppearance.mime?.startsWith('image/')) {
-        errors['appearance'] = 'File appearance harus berupa gambar'
+    // Product Photo: hanya replace jika ada file baru (bukan null)
+    if (rawPhoto !== null && rawPhoto !== undefined) {
+      if (!rawPhoto.mime?.startsWith('image/')) {
+        errors['productPhoto'] = 'File product photo harus berupa gambar'
       } else {
-        documents.appearance = {
-          fileName: rawAppearance.fileName,
-          storedName: rawAppearance.storedName,
-          mime: rawAppearance.mime,
-          size: rawAppearance.size,
-          uploadedAt: rawAppearance.uploadedAt ?? new Date().toISOString(),
+        documents.productPhoto = {
+          fileName: rawPhoto.fileName,
+          storedName: rawPhoto.storedName,
+          mime: rawPhoto.mime,
+          size: rawPhoto.size,
+          uploadedAt: rawPhoto.uploadedAt ?? new Date().toISOString(),
         }
+        delete documents.appearance
       }
     }
 
@@ -606,15 +608,15 @@ export async function createFsa(payload, actor) {
   const checklist = normalizeChecklist(payload?.checklist, errors)
   const approvals = await normalizeApprovals(payload?.approvals, errors)
 
-  let documents = { appearance: null, ppap: [] }
+  let documents = { productPhoto: null, ppap: [] }
   try {
     documents = normalizeDocuments(payload?.documents, errors)
   } catch (error) {
     errors.documents = error.message
   }
 
-  if (!payload?.documents?.appearance) {
-    errors.appearance = 'Foto appearance wajib diunggah'
+  if (!payload?.documents?.productPhoto && !payload?.documents?.appearance) {
+    errors.productPhoto = 'Foto product photo wajib diunggah'
   }
 
   // Approval status selalu auto: FSA baru mulai dari Waiting Approval SPR.

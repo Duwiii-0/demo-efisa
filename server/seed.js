@@ -141,7 +141,7 @@ function sampleFsa(overrides) {
     completedAt: null,
     verifierDmId: 'usr-role-spr',
     verifierFtId: 'usr-role-spr',
-    documents: { appearance: null, ppap: [] },
+    documents: { productPhoto: null, ppap: [] },
     checklist: {
       appearanceApprovalReport: 'not_available',
       checkSheet: 'not_available',

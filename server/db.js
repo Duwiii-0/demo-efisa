@@ -163,6 +163,14 @@ function load() {
     parsed.version = 3
     // Auto-repair saat load agar data lama yang meloncat langsung berurut
     let dirty = masterDirty
+    // Migrasi: documents.appearance -> documents.productPhoto (hanya rename).
+    for (const fsa of parsed.fsas ?? []) {
+      if (fsa.documents && fsa.documents.appearance !== undefined && fsa.documents.productPhoto === undefined) {
+        fsa.documents.productPhoto = fsa.documents.appearance
+        delete fsa.documents.appearance
+        dirty = true
+      }
+    }
     for (const fsa of parsed.fsas ?? []) {
       if (repairFsaInPlace(fsa).length > 0) dirty = true
     }

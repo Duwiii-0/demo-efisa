@@ -18,9 +18,9 @@ export const STEPS = [
 
 export function isStepError(key, stepId) {
   if (stepId === 'general') {
-    return !key.startsWith('approvals.') && key !== 'appearance' && !key.startsWith('documents.') && !key.startsWith('checklist.')
+    return !key.startsWith('approvals.') && key !== 'productPhoto' && !key.startsWith('documents.') && !key.startsWith('checklist.')
   }
-  if (stepId === 'documents') return key === 'appearance' || key.startsWith('documents.')
+  if (stepId === 'documents') return key === 'productPhoto' || key.startsWith('documents.')
   if (stepId === 'checklist') return key.startsWith('checklist.')
   if (stepId === 'approvals') return key.startsWith('approvals.')
   return false
@@ -74,7 +74,7 @@ export default function FsaCreatePage({ reference, user, onCancel, onCreated }) 
     if (general.sampleQuantity !== '') filled += 1
     if (general.verifierDmId) filled += 1
     if (general.verifierFtId) filled += 1
-    if (documents.appearance) filled += 1
+    if (documents.productPhoto) filled += 1
     if (documents.ppap.length) filled += 1
     if (Object.values(form.approvals).some((item) => item.approverId)) filled += 1
     if (form.checklist.checkSheet !== 'not_available') filled += 1
@@ -96,8 +96,8 @@ export default function FsaCreatePage({ reference, user, onCancel, onCreated }) 
     const payload = {
       general: form.general,
       documents: {
-        appearance: form.documents.appearance
-          ? { fileName: form.documents.appearance.fileName, storedName: form.documents.appearance.storedName, mime: form.documents.appearance.mime, size: form.documents.appearance.size, uploadedAt: form.documents.appearance.uploadedAt }
+        productPhoto: form.documents.productPhoto
+          ? { fileName: form.documents.productPhoto.fileName, storedName: form.documents.productPhoto.storedName, mime: form.documents.productPhoto.mime, size: form.documents.productPhoto.size, uploadedAt: form.documents.productPhoto.uploadedAt }
           : null,
         ppap: form.documents.ppap.map((f) => ({ fileName: f.fileName, storedName: f.storedName, mime: f.mime, size: f.size, uploadedAt: f.uploadedAt })),
       },

@@ -56,7 +56,7 @@ function toFsaRow(fsa, createdById) {
     completed_at: fsa.completedAt ?? null,
     verifier_dm_id: fsa.verifierDmId,
     verifier_ft_id: fsa.verifierFtId,
-    documents: fsa.documents ?? { appearance: null, ppap: [] },
+    documents: fsa.documents ?? { productPhoto: null, ppap: [] },
     checklist: fsa.checklist ?? {},
     approvals: fsa.approvals ?? {},
     created_by_id: createdById ?? fsa.createdById ?? null,

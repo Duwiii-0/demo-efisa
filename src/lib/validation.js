@@ -58,8 +58,8 @@ export function validateForm(form, users) {
   if (!general.verifierFtId) {
     errors.verifierFt = 'Verifikator FT wajib dipilih'
   }
-  if (!documents.appearance) {
-    errors.appearance = 'Foto appearance wajib diunggah'
+  if (!documents.productPhoto) {
+    errors.productPhoto = 'Foto product photo wajib diunggah'
   }
 
   const electricalId = form.approvals?.electrical?.approverId

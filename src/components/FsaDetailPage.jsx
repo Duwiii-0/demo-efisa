@@ -23,7 +23,7 @@ async function openPreview(file) {
   setTimeout(() => URL.revokeObjectURL(url), 60000)
 }
 
-function AppearancePreview({ file, onDownload }) {
+function ProductPhotoPreview({ file, onDownload }) {
   const [previewUrl, setPreviewUrl] = useState(null)
   const [previewError, setPreviewError] = useState(false)
 
@@ -274,12 +274,12 @@ export default function FsaDetailPage({ reference, onBack, onEdit }) {
       <SectionCard step="2" title="FSA Documents">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div>
-            <p className="mb-2 text-sm font-medium text-slate-700">Appearance ({fsa.documents.appearance ? 1 : 0} file)</p>
-            {fsa.documents.appearance ? (
-              <AppearancePreview file={fsa.documents.appearance} onDownload={handleDownload} />
+            <p className="mb-2 text-sm font-medium text-slate-700">Product Photo ({(fsa.documents.productPhoto ?? fsa.documents.appearance) ? 1 : 0} file)</p>
+            {(fsa.documents.productPhoto ?? fsa.documents.appearance) ? (
+              <ProductPhotoPreview file={fsa.documents.productPhoto ?? fsa.documents.appearance} onDownload={handleDownload} />
             ) : (
               <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-500">
-                Tidak ada foto appearance.
+                Tidak ada foto product photo.
               </p>
             )}
           </div>

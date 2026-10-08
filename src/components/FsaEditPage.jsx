@@ -40,8 +40,8 @@ function buildFormFromFsa(fsa) {
     // Kita mulai dengan slot kosong; user bisa upload ulang jika perlu.
     documents: {
       // Simpan referensi server agar bisa ditampilkan sebagai "existing"
-      appearance: fsa.documents?.appearance
-        ? { ...fsa.documents.appearance, _existing: true }
+      productPhoto: (fsa.documents?.productPhoto ?? fsa.documents?.appearance)
+        ? { ...(fsa.documents?.productPhoto ?? fsa.documents?.appearance), _existing: true }
         : null,
       ppap: (fsa.documents?.ppap ?? []).map((f) => ({ ...f, _existing: true })),
     },
@@ -116,7 +116,7 @@ export default function FsaEditPage({ reference, user, onCancel, onSaved }) {
     if (general.sampleQuantity !== '') filled += 1
     if (general.verifierDmId) filled += 1
     if (general.verifierFtId) filled += 1
-    if (documents.appearance) filled += 1
+    if (documents.productPhoto) filled += 1
     if (documents.ppap.length) filled += 1
     if (Object.values(form.approvals).some((item) => item.approverId)) filled += 1
     if (form.checklist.checkSheet !== '') filled += 1
@@ -138,7 +138,7 @@ export default function FsaEditPage({ reference, user, onCancel, onSaved }) {
       {
         ...form,
         documents: {
-          appearance: form.documents.appearance,
+          productPhoto: form.documents.productPhoto,
           ppap: form.documents.ppap,
         },
       },
@@ -201,7 +201,7 @@ export default function FsaEditPage({ reference, user, onCancel, onSaved }) {
     const formForValidation = {
       ...form,
       documents: {
-        appearance: form.documents.appearance,
+        productPhoto: form.documents.productPhoto,
         ppap: form.documents.ppap,
       },
     }
@@ -218,14 +218,14 @@ export default function FsaEditPage({ reference, user, onCancel, onSaved }) {
 
     // File sudah diupload langsung ke Storage saat dipilih,
     // jadi kirim metadata saja (tanpa dataUrl) ke server
-    const newAppearance = form.documents.appearance?._existing
+    const newProductPhoto = form.documents.productPhoto?._existing
       ? null
       : {
-          fileName: form.documents.appearance.fileName,
-          storedName: form.documents.appearance.storedName,
-          mime: form.documents.appearance.mime,
-          size: form.documents.appearance.size,
-          uploadedAt: form.documents.appearance.uploadedAt,
+          fileName: form.documents.productPhoto.fileName,
+          storedName: form.documents.productPhoto.storedName,
+          mime: form.documents.productPhoto.mime,
+          size: form.documents.productPhoto.size,
+          uploadedAt: form.documents.productPhoto.uploadedAt,
         }
 
     const fullPpap = form.documents.ppap.map((f) => {
@@ -246,7 +246,7 @@ export default function FsaEditPage({ reference, user, onCancel, onSaved }) {
       const result = await api.updateFsa(id, {
         general: form.general,
         documents: {
-          appearance: newAppearance,
+          productPhoto: newProductPhoto,
           ppap: fullPpap,
         },
         checklist: form.checklist,

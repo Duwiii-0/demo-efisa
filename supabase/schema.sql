@@ -36,7 +36,7 @@ create table if not exists public.fsas (
   completed_at timestamptz,
   verifier_dm_id text,
   verifier_ft_id text,
-  documents jsonb not null default '{"appearance": null, "ppap": []}',
+  documents jsonb not null default '{"productPhoto": null, "ppap": []}',
   checklist jsonb not null default '{}',
   approvals jsonb not null default '{}',
   created_by_id text,
@@ -78,10 +78,15 @@ create table if not exists public.custom_materials (
 create index if not exists master_materials_desc_idx on public.master_materials (material_description);
 create index if not exists custom_materials_created_idx on public.custom_materials (created_at desc);
 
--- 5) Storage bucket untuk upload (appearance + PPAP, maks 10MB/file)
+-- 5) Storage bucket untuk upload (product photo + PPAP, maks 10MB/file)
 insert into storage.buckets (id, name, public)
 values ('efisa-uploads', 'efisa-uploads', false)
 on conflict (id) do nothing;
+
+-- Migrasi nama: documents.appearance -> documents.productPhoto (hanya rename).
+update public.fsas
+set documents = (documents - 'appearance') || jsonb_build_object('productPhoto', documents -> 'appearance')
+where documents ? 'appearance' and not (documents ? 'productPhoto');
 
 -- Kebijakan RLS: matikan RLS untuk demo agar service_role bisa baca/tulis,
 -- frontend TIDAK akses langsung, semua lewat Express /api (auth Bearer).
