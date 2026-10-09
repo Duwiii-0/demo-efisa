@@ -40,10 +40,23 @@ function FsaTable({ items, reference, onOpenDetail, emptyText, onAct, busyId, so
                 </td>
               </tr>
             ) : (
-            items.map((fsa) => (
+            items.map((fsa) => {
+              const isReworkEditable =
+                fsa.approvalStatus === 'rework_required' &&
+                (fsa.approvals?.procurement?.approverId
+                  ? fsa.approvals?.procurement?.approverId === reference.me?.id
+                  : reference.me?.role === 'procurement')
+              return (
               <tr
                 key={fsa.id}
-                onClick={() => onOpenDetail(fsa.id, showActions ? { editable: true } : undefined)}
+                onClick={() => {
+                  if (isReworkEditable) {
+                    // Rework langsung masuk halaman edit (kaya draft), tanpa perlu tombol.
+                    onOpenDetail(fsa.id, { reworkEdit: true })
+                  } else {
+                    onOpenDetail(fsa.id, showActions ? { editable: true } : undefined)
+                  }
+                }}
                 className="cursor-pointer transition hover:bg-sky-50/60"
               >
                 <td className="whitespace-nowrap px-5 py-3 text-xs font-semibold text-sky-700">{fsa.fsaNumber}</td>
@@ -110,7 +123,8 @@ function FsaTable({ items, reference, onOpenDetail, emptyText, onAct, busyId, so
                 </td>
                 ) : null}
               </tr>
-            ))
+              )
+            })
             )}
           </tbody>
         </table>

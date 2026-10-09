@@ -75,6 +75,9 @@ export default function FsaEditPage({ reference, user, onCancel, onSaved, onSubm
   const [stepIndex, setStepIndex] = useState(0)
 
   const isDraft = fsa?.approvalStatus === 'draft'
+  const isRework = fsa?.approvalStatus === 'rework_required'
+  // Rework bisa edit semua kaya draft: pindah section bebas, validasi hanya saat submit.
+  const canMoveFreely = isDraft || isRework
 
   useEffect(() => {
     let active = true
@@ -136,8 +139,8 @@ export default function FsaEditPage({ reference, user, onCancel, onSaved, onSubm
   }
 
   function goNext() {
-    // Selama draft: pindah section bebas, validasi hanya saat Submit for Approval.
-    if (!isDraft) {
+    // Selama draft/rework: pindah section bebas, validasi hanya saat Submit.
+    if (!canMoveFreely) {
       const current = STEPS[stepIndex]
       const stepErrorMap = stepErrors(current.id)
       if (Object.keys(stepErrorMap).length > 0) {
@@ -160,8 +163,8 @@ export default function FsaEditPage({ reference, user, onCancel, onSaved, onSubm
 
   function goToStep(index) {
     if (index === stepIndex) return
-    // Selama draft: pindah section bebas.
-    if (isDraft) {
+    // Selama draft/rework: pindah section bebas.
+    if (canMoveFreely) {
       setSubmitError('')
       setStepIndex(index)
       window.scrollTo({ top: 0, behavior: 'smooth' })
