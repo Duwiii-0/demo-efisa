@@ -107,25 +107,58 @@ export function findSkippedApprovals(approvals) {
   return skipped
 }
 
-export const CHECKLIST_BASE_ITEMS = [
-  { key: 'checkSheet', label: 'Check Sheet' },
-  { key: 'millCertificate', label: 'Mill Certificate' },
-]
-
-export const CHECKLIST_LEVEL3_ITEMS = [
+// Slot dokumen FSA: productPhoto (single, khusus gambar, wajib) + 20 slot multiple.
+export const FSA_DOCUMENT_FIELDS = [
+  { key: 'millCertificate', label: 'Mill Sheet / Mill Certificate', required: true },
+  { key: 'checkSheet', label: 'Check Sheet', required: true },
+  { key: 'sampleInstructionPlan', label: 'Sample Instruction Plan', required: true },
+  { key: 'productTrialDocument', label: 'Product Trial Document', required: true },
+  { key: 'productCatalog', label: 'Product Catalog' },
   { key: 'drawing', label: 'Drawing' },
   { key: 'engineeringChangeDocument', label: 'Engineering Change Document' },
-  { key: 'customerEngineeringApproval', label: 'Customer Engineering Approval' },
-  { key: 'designFmea', label: 'Design FMEA' },
-  { key: 'processFmea', label: 'Process FMEA' },
-  { key: 'controlPlan', label: 'Control Plan' },
-  { key: 'measurementSystemAnalysis', label: 'Measurement System Analysis' },
   { key: 'dimensionalMeasurement', label: 'Dimensional Measurement' },
   { key: 'functionalTest', label: 'Functional Test' },
-  { key: 'initialProcessStudies', label: 'Initial Process Studies' },
   { key: 'qualifiedLaboratoryDocumentation', label: 'Qualified Laboratory Documentation' },
   { key: 'appearanceApprovalReport', label: 'Appearance Approval Report' },
+  { key: 'customerEngineeringApproval', label: 'Customer Engineering Approval' },
+  { key: 'designFmea', label: 'Design FMEA' },
+  { key: 'controlPlan', label: 'Control Plan' },
+  { key: 'measurementSystemAnalysis', label: 'Measurement System Analysis' },
+  { key: 'initialProcessStudies', label: 'Initial Process Studies' },
+  { key: 'processFlowDiagram', label: 'Proses Flow Diagram' },
+  { key: 'sampleProduct', label: 'Sample Product' },
+  { key: 'masterSample', label: 'Master Sample' },
+  { key: 'checkingAids', label: 'Checking Aids' },
 ]
+
+export const REQUIRED_DOCUMENT_FIELDS = FSA_DOCUMENT_FIELDS.filter((field) => field.required)
+
+// Tipe file yang boleh diunggah ke 20 slot dokumen: PDF, Excel, Word, gambar.
+export const DOCUMENT_ACCEPT = '.pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp,.gif'
+
+export const MAX_FILES_PER_FIELD = 10
+
+export function emptyDocuments() {
+  return {
+    productPhoto: null,
+    ...Object.fromEntries(FSA_DOCUMENT_FIELDS.map((field) => [field.key, []])),
+  }
+}
+
+// Buang key transien (_existing, localPreview) sebelum dikirim ke server.
+export function serializeDocuments(documents) {
+  const strip = (file) => ({
+    fileName: file.fileName,
+    storedName: file.storedName,
+    mime: file.mime,
+    size: file.size,
+    uploadedAt: file.uploadedAt,
+  })
+  return {
+    productPhoto: documents?.productPhoto ? strip(documents.productPhoto) : null,
+    ...Object.fromEntries(FSA_DOCUMENT_FIELDS.map((field) => [field.key, (documents?.[field.key] ?? []).map(strip)])),
+  }
+}
 
 export const SAMPLE_QUANTITY_OPTIONS = [
   { value: 0, label: 'No Sample' },
@@ -160,22 +193,6 @@ export const emptyFsaForm = () => ({
     verifierDmId: '',
     verifierFtId: '',
   },
-  documents: { productPhoto: null, ppap: [] },
-  checklist: {
-    checkSheet: '',
-    millCertificate: '',
-    drawing: '',
-    engineeringChangeDocument: '',
-    customerEngineeringApproval: '',
-    designFmea: '',
-    processFmea: '',
-    controlPlan: '',
-    measurementSystemAnalysis: '',
-    dimensionalMeasurement: '',
-    functionalTest: '',
-    initialProcessStudies: '',
-    qualifiedLaboratoryDocumentation: '',
-    appearanceApprovalReport: '',
-  },
+  documents: emptyDocuments(),
   approvals: emptyApprovals(),
 })

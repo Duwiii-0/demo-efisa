@@ -1,3 +1,5 @@
+import { FSA_DOCUMENT_FIELDS, MAX_FILES_PER_FIELD } from './fsaForm.js'
+
 export function splitParts(value) {
   return String(value ?? '')
     .toUpperCase()
@@ -56,6 +58,19 @@ export function validateForm(form, users) {
   }
   if (!documents.productPhoto) {
     errors.productPhoto = 'Foto product photo wajib diunggah'
+  }
+  for (const field of FSA_DOCUMENT_FIELDS) {
+    const files = documents[field.key] ?? []
+    if (field.required && files.length === 0) {
+      errors[`documents.${field.key}`] = `${field.label} wajib diunggah`
+    } else if (files.length > MAX_FILES_PER_FIELD) {
+      errors[`documents.${field.key}`] = `${field.label} maksimal ${MAX_FILES_PER_FIELD} file`
+    } else {
+      const invalid = files.find((file) => !isAllowedDocument(file))
+      if (invalid) {
+        errors[`documents.${field.key}`] = `File ${invalid.fileName ?? 'tersebut'} harus PDF, Excel, Word, atau gambar`
+      }
+    }
   }
 
   const electricalId = form.approvals?.electrical?.approverId
@@ -118,8 +133,27 @@ export function isImage(file) {
   return Boolean(file?.type?.startsWith('image/'))
 }
 
+const ALLOWED_DOCUMENT_EXTENSIONS = new Set(['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'webp', 'gif'])
+
+// Menerima File (saat pilih) maupun meta {fileName, mime} (saat validasi form).
+export function isAllowedDocument(file) {
+  const mime = String(file?.mime ?? file?.type ?? '')
+  if (mime.startsWith('image/')) return true
+  if (
+    mime === 'application/pdf' ||
+    mime === 'application/msword' ||
+    mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+    mime === 'application/vnd.ms-excel' ||
+    mime === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  ) {
+    return true
+  }
+  const name = String(file?.fileName ?? file?.name ?? '')
+  const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : ''
+  return ALLOWED_DOCUMENT_EXTENSIONS.has(ext)
+}
+
 export const MAX_FILE_SIZE = 10 * 1024 * 1024
-export const MAX_FSA_FILES = 10
 
 export function readFileAsDataUrl(file) {
   return new Promise((resolve, reject) => {

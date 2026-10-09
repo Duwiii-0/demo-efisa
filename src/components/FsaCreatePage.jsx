@@ -3,25 +3,22 @@ import { api } from '../lib/api.js'
 import { Alert, Button } from './ui.jsx'
 import GeneralInformationSection from './sections/GeneralInformationSection.jsx'
 import PpapDocumentsSection from './sections/PpapDocumentsSection.jsx'
-import DocumentReviewChecklistSection from './sections/DocumentReviewChecklistSection.jsx'
 import CrossFunctionalApprovalSection from './sections/CrossFunctionalApprovalSection.jsx'
-import { emptyFsaForm } from '../lib/fsaForm.js'
+import { emptyFsaForm, REQUIRED_DOCUMENT_FIELDS, serializeDocuments } from '../lib/fsaForm.js'
 import { validateForm } from '../lib/validation.js'
 import { todayInputValue } from '../lib/format.js'
 
 export const STEPS = [
   { id: 'general', label: 'General Information' },
   { id: 'documents', label: 'FSA Documents' },
-  { id: 'checklist', label: 'Document Review Checklist' },
   { id: 'approvals', label: 'Cross Functional Requirement' },
 ]
 
 export function isStepError(key, stepId) {
   if (stepId === 'general') {
-    return !key.startsWith('approvals.') && key !== 'productPhoto' && !key.startsWith('documents.') && !key.startsWith('checklist.')
+    return !key.startsWith('approvals.') && key !== 'productPhoto' && !key.startsWith('documents.')
   }
   if (stepId === 'documents') return key === 'productPhoto' || key.startsWith('documents.')
-  if (stepId === 'checklist') return key.startsWith('checklist.')
   if (stepId === 'approvals') return key.startsWith('approvals.')
   return false
 }
@@ -59,7 +56,7 @@ export default function FsaCreatePage({ reference, user, onCancel, onCreated }) 
   const setGeneral = (general) => setForm((current) => ({ ...current, general }))
 
   const completion = useMemo(() => {
-    const total = 16
+    const total = 18
     let filled = 0
     const { general, documents } = form
     if (general.fsaNumber) filled += 1
@@ -75,9 +72,10 @@ export default function FsaCreatePage({ reference, user, onCancel, onCreated }) 
     if (general.verifierDmId) filled += 1
     if (general.verifierFtId) filled += 1
     if (documents.productPhoto) filled += 1
-    if (documents.ppap.length) filled += 1
+    for (const field of REQUIRED_DOCUMENT_FIELDS) {
+      if ((documents[field.key] ?? []).length) filled += 1
+    }
     if (Object.values(form.approvals).some((item) => item.approverId)) filled += 1
-    if (form.checklist.checkSheet !== 'not_available') filled += 1
     return Math.round((filled / total) * 100)
   }, [form])
 
@@ -95,13 +93,7 @@ export default function FsaCreatePage({ reference, user, onCancel, onCreated }) 
 
     const payload = {
       general: form.general,
-      documents: {
-        productPhoto: form.documents.productPhoto
-          ? { fileName: form.documents.productPhoto.fileName, storedName: form.documents.productPhoto.storedName, mime: form.documents.productPhoto.mime, size: form.documents.productPhoto.size, uploadedAt: form.documents.productPhoto.uploadedAt }
-          : null,
-        ppap: form.documents.ppap.map((f) => ({ fileName: f.fileName, storedName: f.storedName, mime: f.mime, size: f.size, uploadedAt: f.uploadedAt })),
-      },
-      checklist: form.checklist,
+      documents: serializeDocuments(form.documents),
       approvals: form.approvals,
     }
 
@@ -243,16 +235,6 @@ export default function FsaCreatePage({ reference, user, onCancel, onCreated }) 
       ) : null}
 
       {stepIndex === 2 ? (
-        <DocumentReviewChecklistSection
-          form={form}
-          errors={errors}
-          reference={reference}
-          onChange={(checklist) => setForm((current) => ({ ...current, checklist }))}
-          lockLevel3
-        />
-      ) : null}
-
-      {stepIndex === 3 ? (
         <CrossFunctionalApprovalSection
           form={form}
           errors={errors}

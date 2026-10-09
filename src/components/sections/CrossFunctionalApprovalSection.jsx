@@ -150,7 +150,7 @@ export default function CrossFunctionalApprovalSection({
 
   return (
     <SectionCard
-      step="4"
+      step="3"
       title="Cross Functional Approval"
       description={readOnly ? 'Hasil approval dari setiap fungsi terkait.' : 'Approver dari setiap fungsi terkait.'}
     >

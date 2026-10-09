@@ -59,7 +59,6 @@ export const api = {
   createFsa: (payload) => request('/api/fsa', { method: 'POST', body: payload }),
   updateFsa: (id, payload) => request(`/api/fsa/${id}`, { method: 'PATCH', body: payload }),
   updateDecision: (id, key, payload) => request(`/api/fsa/${id}/decision/${key}`, { method: 'PATCH', body: payload }),
-  updateChecklist: (id, payload) => request(`/api/fsa/${id}/checklist`, { method: 'PATCH', body: payload }),
   downloadUrl: (storedName) => `/api/files/${storedName}`,
   signUpload: (fileName, mime, fsaId) =>
     request('/api/uploads/sign', { method: 'POST', body: { fileName, mime, fsaId } }),

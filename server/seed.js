@@ -72,13 +72,6 @@ export const FSA_REASONS = [
 
 export const FSA_LEVELS = [1, 2, 3, 4, 5]
 
-export const CHECKLIST_STATUSES = [
-  { id: 'not_available', name: 'Not Available' },
-  { id: 'under_review', name: 'Under Review' },
-  { id: 'approved', name: 'Approved' },
-  { id: 'rejected', name: 'Rejected' },
-]
-
 export const APPROVAL_DECISIONS = [
   { id: 'pending', name: 'Pending' },
   { id: 'approved', name: 'Approved' },
@@ -111,6 +104,36 @@ function pendingApproval(approverId = null) {
   return { decision: 'pending', approverId, decidedAt: null, remark: '' }
 }
 
+const SEED_DOCUMENT_KEYS = [
+  'productCatalog',
+  'millCertificate',
+  'sampleInstructionPlan',
+  'productTrialDocument',
+  'checkSheet',
+  'drawing',
+  'engineeringChangeDocument',
+  'dimensionalMeasurement',
+  'functionalTest',
+  'qualifiedLaboratoryDocumentation',
+  'appearanceApprovalReport',
+  'customerEngineeringApproval',
+  'designFmea',
+  'controlPlan',
+  'measurementSystemAnalysis',
+  'initialProcessStudies',
+  'processFlowDiagram',
+  'sampleProduct',
+  'masterSample',
+  'checkingAids',
+]
+
+function emptySeedDocuments() {
+  return {
+    productPhoto: null,
+    ...Object.fromEntries(SEED_DOCUMENT_KEYS.map((key) => [key, []])),
+  }
+}
+
 function approvedApproval(approverId, decidedAt, remark) {
   return { decision: 'approved', approverId, decidedAt, remark: remark ?? '' }
 }
@@ -138,12 +161,7 @@ function sampleFsa(overrides) {
     completedAt: null,
     verifierDmId: 'usr-role-spr',
     verifierFtId: 'usr-role-spr',
-    documents: { productPhoto: null, ppap: [] },
-    checklist: {
-      appearanceApprovalReport: 'not_available',
-      checkSheet: 'not_available',
-      millCertificate: 'not_available',
-    },
+    documents: emptySeedDocuments(),
     approvals: {
       procurement: pendingApproval('usr-role-spr'),
       electrical: pendingApproval('usr-role-eee'),
@@ -206,7 +224,6 @@ export const SAMPLE_FSAS = [
       dateOfSampleSubmission: '2026-03-10',
       sampleQuantity: 10,
       approvalStatus: 'waiting_approval_quality',
-      checklist: { appearanceApprovalReport: 'approved', checkSheet: 'under_review', millCertificate: 'not_available' },
       approvals: {
         procurement: approvedApproval('usr-role-spr', '2026-03-11T01:20:00.000Z', 'Supplier baru sudah onboarding.'),
         electrical: approvedApproval('usr-role-eee', '2026-03-12T02:30:00.000Z', 'Spesifikasi kelistrikan oke.'),
@@ -232,7 +249,6 @@ export const SAMPLE_FSAS = [
       dateOfSampleSubmission: '2026-03-20',
       sampleQuantity: 3,
       approvalStatus: 'waiting_approval_production',
-      checklist: { appearanceApprovalReport: 'approved', checkSheet: 'approved', millCertificate: 'under_review' },
       approvals: {
         procurement: approvedApproval('usr-role-spr', '2026-03-21T01:20:00.000Z', 'PO revisi sudah terbit.'),
         electrical: approvedApproval('usr-role-eee', '2026-03-22T02:30:00.000Z', 'Kelistrikan oke.'),
@@ -257,7 +273,6 @@ export const SAMPLE_FSAS = [
       dateOfSampleSubmission: '2026-04-01',
       approvalStatus: 'accepted',
       completedAt: '2026-04-05T05:00:00.000Z',
-      checklist: { appearanceApprovalReport: 'approved', checkSheet: 'approved', millCertificate: 'approved' },
       approvals: {
         procurement: approvedApproval('usr-role-spr', '2026-04-02T01:20:00.000Z', 'SPR oke.'),
         electrical: approvedApproval('usr-role-eee', '2026-04-03T02:30:00.000Z', 'Elektrik oke.'),

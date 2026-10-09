@@ -4,9 +4,8 @@ import { api } from '../lib/api.js'
 import { Alert, Button, Spinner } from './ui.jsx'
 import GeneralInformationSection from './sections/GeneralInformationSection.jsx'
 import PpapDocumentsSection from './sections/PpapDocumentsSection.jsx'
-import DocumentReviewChecklistSection from './sections/DocumentReviewChecklistSection.jsx'
 import CrossFunctionalApprovalSection from './sections/CrossFunctionalApprovalSection.jsx'
-import { APPROVAL_ORDER, SAMPLE_QUANTITY_VALUES } from '../lib/fsaForm.js'
+import { APPROVAL_ORDER, FSA_DOCUMENT_FIELDS, REQUIRED_DOCUMENT_FIELDS, SAMPLE_QUANTITY_VALUES, serializeDocuments } from '../lib/fsaForm.js'
 import { validateForm } from '../lib/validation.js'
 import { STEPS, isStepError } from './FsaCreatePage.jsx'
 import { toLocalInputValue } from '../lib/format.js'
@@ -41,26 +40,15 @@ function buildFormFromFsa(fsa) {
     // Kita mulai dengan slot kosong; user bisa upload ulang jika perlu.
     documents: {
       // Simpan referensi server agar bisa ditampilkan sebagai "existing"
-      productPhoto: (fsa.documents?.productPhoto ?? fsa.documents?.appearance)
-        ? { ...(fsa.documents?.productPhoto ?? fsa.documents?.appearance), _existing: true }
+      productPhoto: fsa.documents?.productPhoto
+        ? { ...fsa.documents.productPhoto, _existing: true }
         : null,
-      ppap: (fsa.documents?.ppap ?? []).map((f) => ({ ...f, _existing: true })),
-    },
-    checklist: {
-      checkSheet: fsa.checklist?.checkSheet ?? '',
-      millCertificate: fsa.checklist?.millCertificate ?? '',
-      drawing: fsa.checklist?.drawing ?? '',
-      engineeringChangeDocument: fsa.checklist?.engineeringChangeDocument ?? '',
-      customerEngineeringApproval: fsa.checklist?.customerEngineeringApproval ?? '',
-      designFmea: fsa.checklist?.designFmea ?? '',
-      processFmea: fsa.checklist?.processFmea ?? '',
-      controlPlan: fsa.checklist?.controlPlan ?? '',
-      measurementSystemAnalysis: fsa.checklist?.measurementSystemAnalysis ?? '',
-      dimensionalMeasurement: fsa.checklist?.dimensionalMeasurement ?? '',
-      functionalTest: fsa.checklist?.functionalTest ?? '',
-      initialProcessStudies: fsa.checklist?.initialProcessStudies ?? '',
-      qualifiedLaboratoryDocumentation: fsa.checklist?.qualifiedLaboratoryDocumentation ?? '',
-      appearanceApprovalReport: fsa.checklist?.appearanceApprovalReport ?? '',
+      ...Object.fromEntries(
+        FSA_DOCUMENT_FIELDS.map((field) => [
+          field.key,
+          (fsa.documents?.[field.key] ?? []).map((f) => ({ ...f, _existing: true })),
+        ]),
+      ),
     },
     approvals: Object.fromEntries(
       APPROVAL_ORDER.map((key) => [
@@ -102,7 +90,7 @@ export default function FsaEditPage({ reference, user, onCancel, onSaved }) {
 
   const completion = useMemo(() => {
     if (!form) return 0
-    const total = 16
+    const total = 18
     let filled = 0
     const { general, documents } = form
     if (general.fsaNumber) filled += 1
@@ -118,9 +106,10 @@ export default function FsaEditPage({ reference, user, onCancel, onSaved }) {
     if (general.verifierDmId) filled += 1
     if (general.verifierFtId) filled += 1
     if (documents.productPhoto) filled += 1
-    if (documents.ppap.length) filled += 1
+    for (const field of REQUIRED_DOCUMENT_FIELDS) {
+      if ((documents[field.key] ?? []).length) filled += 1
+    }
     if (Object.values(form.approvals).some((item) => item.approverId)) filled += 1
-    if (form.checklist.checkSheet !== '') filled += 1
     return Math.round((filled / total) * 100)
   }, [form])
 
@@ -135,16 +124,7 @@ export default function FsaEditPage({ reference, user, onCancel, onSaved }) {
   const setGeneral = (general) => setForm((current) => ({ ...current, general }))
 
   function validateCurrentForm() {
-    return validateForm(
-      {
-        ...form,
-        documents: {
-          productPhoto: form.documents.productPhoto,
-          ppap: form.documents.ppap,
-        },
-      },
-      reference.users,
-    )
+    return validateForm(form, reference.users)
   }
 
   function stepErrors(stepId) {
@@ -199,15 +179,7 @@ export default function FsaEditPage({ reference, user, onCancel, onSaved }) {
     event.preventDefault()
 
     // Untuk validasi: dokumen existing tetap dianggap ada
-    const formForValidation = {
-      ...form,
-      documents: {
-        productPhoto: form.documents.productPhoto,
-        ppap: form.documents.ppap,
-      },
-    }
-
-    const validationErrors = validateForm(formForValidation, reference.users)
+    const validationErrors = validateForm(form, reference.users)
     setErrors(validationErrors)
     setSubmitError('')
 
@@ -219,38 +191,13 @@ export default function FsaEditPage({ reference, user, onCancel, onSaved }) {
 
     // File sudah diupload langsung ke Storage saat dipilih,
     // jadi kirim metadata saja (tanpa dataUrl) ke server
-    const newProductPhoto = form.documents.productPhoto?._existing
-      ? null
-      : {
-          fileName: form.documents.productPhoto.fileName,
-          storedName: form.documents.productPhoto.storedName,
-          mime: form.documents.productPhoto.mime,
-          size: form.documents.productPhoto.size,
-          uploadedAt: form.documents.productPhoto.uploadedAt,
-        }
-
-    const fullPpap = form.documents.ppap.map((f) => {
-      if (f._existing) {
-        return { storedName: f.storedName, fileName: f.fileName }
-      }
-      return {
-        fileName: f.fileName,
-        storedName: f.storedName,
-        mime: f.mime,
-        size: f.size,
-        uploadedAt: f.uploadedAt,
-      }
-    })
+    const payloadDocuments = serializeDocuments(form.documents)
 
     setBusy(true)
     try {
       const result = await api.updateFsa(id, {
         general: form.general,
-        documents: {
-          productPhoto: newProductPhoto,
-          ppap: fullPpap,
-        },
-        checklist: form.checklist,
+        documents: payloadDocuments,
         approvals: form.approvals,
       })
       onSaved(result.fsa)
@@ -343,16 +290,6 @@ export default function FsaEditPage({ reference, user, onCancel, onSaved }) {
       ) : null}
 
       {stepIndex === 2 ? (
-      <DocumentReviewChecklistSection
-        form={form}
-        errors={errors}
-        reference={reference}
-        onChange={(checklist) => setForm((current) => ({ ...current, checklist }))}
-        lockLevel3
-      />
-      ) : null}
-
-      {stepIndex === 3 ? (
       <CrossFunctionalApprovalSection
         form={form}
         errors={errors}

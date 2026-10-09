@@ -1,13 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { api, downloadFile, getToken } from '../lib/api.js'
-import { Alert, Button, Card, DetailRow, SectionCard, Select, Field, Spinner, Toast } from './ui.jsx'
+import { Alert, Button, SectionCard, Spinner, Toast } from './ui.jsx'
 import GeneralInformationSection from './sections/GeneralInformationSection.jsx'
 import CrossFunctionalApprovalSection from './sections/CrossFunctionalApprovalSection.jsx'
-import { assignedActionableKeys } from '../lib/fsaForm.js'
+import { FSA_DOCUMENT_FIELDS, assignedActionableKeys } from '../lib/fsaForm.js'
 import { badgeClass, findName, formatBytes } from '../lib/format.js'
-
-import { CHECKLIST_BASE_ITEMS, CHECKLIST_LEVEL3_ITEMS } from '../lib/fsaForm.js'
 
 async function openPreview(file) {
   const response = await fetch(api.downloadUrl(file.storedName), { headers: { Authorization: `Bearer ${getToken()}` } })
@@ -99,9 +97,8 @@ export default function FsaDetailPage({ reference, onBack, onEdit }) {
   const [toast, setToast] = useState(null)
   const [busyKey, setBusyKey] = useState(null)
   const [stepIndex, setStepIndex] = useState(0)
-  const [pendingChecklist, setPendingChecklist] = useState({})
 
-  const DETAIL_STEPS = ['FSA General Information', 'FSA Documents', 'Document Review Checklist', 'Cross Functional Requirement']
+  const DETAIL_STEPS = ['FSA General Information', 'FSA Documents', 'Cross Functional Requirement']
 
   useEffect(() => {
     if (!toast) return
@@ -129,18 +126,6 @@ export default function FsaDetailPage({ reference, onBack, onEdit }) {
     [fsa, reference],
   )
 
-  const canEditChecklist = useMemo(() => {
-    if (!fsa || !reference.me) return false
-    if (reference.me.role === 'procurement') return false
-    if (fsa.approvalStatus === 'accepted' || fsa.approvalStatus === 'canceled') return false
-    return Object.values(fsa.approvals ?? {}).some((approval) => approval?.approverId === reference.me.id)
-  }, [fsa, reference])
-
-  function handleChecklistChange(key, value) {
-    setPendingChecklist((current) => ({ ...current, [key]: value }))
-    setToast(null)
-  }
-
   async function handleDownload(file) {
     try {
       await downloadFile(file)
@@ -153,15 +138,6 @@ export default function FsaDetailPage({ reference, onBack, onEdit }) {
     setBusyKey(key)
     setToast(null)
     try {
-      const entries = Object.entries(pendingChecklist)
-      let saved = null
-      if (entries.length > 0) {
-        const payload = Object.fromEntries(entries)
-        const result = await api.updateChecklist(id, payload)
-        saved = result.fsa
-        setFsa(saved)
-        setPendingChecklist({})
-      }
       const decideResult = await api.updateDecision(id, key, { decision, remark, ...(canceled ? { canceled: true } : {}) })
       setFsa(decideResult.fsa)
       setToast({
@@ -275,9 +251,9 @@ export default function FsaDetailPage({ reference, onBack, onEdit }) {
       <SectionCard step="2" title="FSA Documents">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div>
-            <p className="mb-2 text-sm font-medium text-slate-700">Product Photo ({(fsa.documents.productPhoto ?? fsa.documents.appearance) ? 1 : 0} file)</p>
-            {(fsa.documents.productPhoto ?? fsa.documents.appearance) ? (
-              <ProductPhotoPreview file={fsa.documents.productPhoto ?? fsa.documents.appearance} onDownload={handleDownload} />
+            <p className="mb-2 text-sm font-medium text-slate-700">Product Photo ({fsa.documents.productPhoto ? 1 : 0} file)</p>
+            {fsa.documents.productPhoto ? (
+              <ProductPhotoPreview file={fsa.documents.productPhoto} onDownload={handleDownload} />
             ) : (
               <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-500">
                 Tidak ada foto product photo.
@@ -285,60 +261,39 @@ export default function FsaDetailPage({ reference, onBack, onEdit }) {
             )}
           </div>
 
-          <div>
-            <p className="mb-2 text-sm font-medium text-slate-700">FSA Document ({fsa.documents.ppap.length} file)</p>
-            {fsa.documents.ppap.length ? (
-              <div className="space-y-2">
-                {fsa.documents.ppap.map((file) => {
-                  const previewable = /pdf|image/.test(file.mime ?? '') || /\.(pdf|jpe?g|png|gif|webp)$/i.test(file.fileName ?? '')
-                  return (
-                    <FileLink
-                      key={file.storedName}
-                      file={file}
-                      previewable={previewable}
-                      onPreview={() => openPreview(file).catch(() => {})}
-                      onDownload={() => handleDownload(file)}
-                    />
-                  )
-                })}
-              </div>
-            ) : (
-              <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-500">
-                Tidak ada file FSA.
-              </p>
-            )}
-          </div>
-        </div>
-      </SectionCard>
-      ) : null}
-
-      {stepIndex === 2 ? (
-      <SectionCard step="3" title="Document Review Checklist">
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          {(Number(fsa.ppapLevel) === 3 ? [...CHECKLIST_BASE_ITEMS, ...CHECKLIST_LEVEL3_ITEMS] : CHECKLIST_BASE_ITEMS).map(({ key, label }) => {
-            const editable = canEditChecklist
+          {FSA_DOCUMENT_FIELDS.map((field) => {
+            const files = fsa.documents[field.key] ?? []
             return (
-              <Field key={key} label={label}>
-                <Select
-                  value={pendingChecklist[key] ?? fsa.checklist[key] ?? ''}
-                  disabled={!editable || busyKey}
-                  onChange={(event) => handleChecklistChange(key, event.target.value)}
-                >
-                  <option value="">-- Pilih status --</option>
-                  {reference.checklistStatuses.map((status) => (
-                    <option key={status.id} value={status.id}>
-                      {status.name}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
+              <div key={field.key}>
+                <p className="mb-2 text-sm font-medium text-slate-700">{field.label} ({files.length} file)</p>
+                {files.length ? (
+                  <div className="space-y-2">
+                    {files.map((file, index) => {
+                      const previewable = /pdf|image/.test(file.mime ?? '') || /\.(pdf|jpe?g|png|gif|webp)$/i.test(file.fileName ?? '')
+                      return (
+                        <FileLink
+                          key={`${file.storedName}-${index}`}
+                          file={file}
+                          previewable={previewable}
+                          onPreview={() => openPreview(file).catch(() => {})}
+                          onDownload={() => handleDownload(file)}
+                        />
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-500">
+                    Tidak ada file {field.label}.
+                  </p>
+                )}
+              </div>
             )
           })}
         </div>
       </SectionCard>
       ) : null}
 
-      {stepIndex === 3 ? (
+      {stepIndex === 2 ? (
       <CrossFunctionalApprovalSection
         form={{ approvals: fsa.approvals, createdAt: fsa.createdAt }}
         errors={{}}
