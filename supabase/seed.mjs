@@ -2,15 +2,9 @@
 // Jalankan: npm run db:seed:supabase
 // Butuh env: SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY
 import 'dotenv/config'
-import { readFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { randomUUID } from 'node:crypto'
 import { createClient } from '@supabase/supabase-js'
 import { SAMPLE_FSAS, USERS } from '../server/seed.js'
-
-const rootDir = dirname(dirname(fileURLToPath(import.meta.url)))
-const MASTER_MATERIALS = JSON.parse(readFileSync(join(rootDir, 'server', 'masterMaterials.json'), 'utf8'))
 
 const url = process.env.SUPABASE_URL
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -85,22 +79,3 @@ if (fsaErr) {
   process.exit(1)
 }
 console.log(`FSA tersed: ${rows.length}`)
-
-// Seed master materials (hijau) beserta material description hasil import.
-// upsert: desc baru menimpa desc lama per part_number.
-const masterRows = []
-{
-  const seen = new Set()
-  for (const row of MASTER_MATERIALS) {
-    const part_number = String(row.partNumber ?? '').trim().toUpperCase()
-    if (!part_number || seen.has(part_number)) continue
-    seen.add(part_number)
-    masterRows.push({ part_number, material_description: String(row.materialDescription ?? '').trim() })
-  }
-}
-const { error: masterErr } = await supa.from('master_materials').upsert(masterRows, { onConflict: 'part_number' })
-if (masterErr) {
-  console.error('Gagal seed master_materials:', masterErr.message)
-  process.exit(1)
-}
-console.log(`Master materials tersed: ${masterRows.length}`)

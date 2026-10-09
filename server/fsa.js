@@ -12,9 +12,7 @@ import {
   buildNextNumber as buildNextNumberStore,
   getFsaById,
   insertFsa as insertFsaRow,
-  lookupMaterial,
   saveFsa as saveFsaRow,
-  upsertCustomMaterial,
   userExistsById,
 } from './store.js'
 import { MAX_FILES } from './uploads.js'
@@ -280,35 +278,6 @@ export function deriveStatus(approvals) {
   return 'waiting_approval_spr'
 }
 
-// Part non-master otomatis tercatat ke custom_materials (tetap kuning).
-// desc sejajar by koma bila jumlahnya sama, selain itu pakai desc penuh.
-function splitDescriptions(materialDescription, count) {
-  const chunks = String(materialDescription ?? '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean)
-  if (chunks.length === count) return chunks
-  return Array.from({ length: count }, (_, i) => chunks[i] ?? chunks[0] ?? String(materialDescription ?? '').trim())
-}
-
-async function registerCustomMaterials(partNumbers, materialDescription, fsaId, actorId) {
-  const descs = splitDescriptions(materialDescription, partNumbers.length)
-  const registered = []
-  for (let i = 0; i < partNumbers.length; i += 1) {
-    const lookup = await lookupMaterial(partNumbers[i])
-    if (lookup && lookup.status !== 'master' && lookup.status !== 'custom') {
-      await upsertCustomMaterial({
-        partNumber: partNumbers[i],
-        materialDescription: descs[i] ?? '',
-        fsaId,
-        userId: actorId,
-      })
-      registered.push(partNumbers[i])
-    }
-  }
-  return registered
-}
-
 export async function updateFsa(fsaId, payload, actor) {
   const fsa = await getFsaById(fsaId)
   if (!fsa) return null
@@ -334,7 +303,7 @@ export async function updateFsa(fsaId, payload, actor) {
 
   const partNumbers = String(body.partNumber ?? '')
     .toUpperCase()
-    .split(/[,\n;]+/)
+    .split(',')
     .map((part) => part.trim())
     .filter(Boolean)
   if (partNumbers.length === 0) {
@@ -343,11 +312,7 @@ export async function updateFsa(fsaId, payload, actor) {
   const partNumber = partNumbers.join(',')
 
   const materialDescription = String(body.materialDescription ?? '').trim()
-  const descSlots = String(body.materialDescription ?? '').split(',')
-  const missingDesc = partNumbers.filter((_, idx) => !(descSlots[idx] ?? '').trim())
-  if (missingDesc.length > 0) {
-    errors.materialDescription = `Material description wajib diisi untuk: ${missingDesc.join(', ')}`
-  } else if (materialDescription.length < 3) {
+  if (materialDescription.length < 3) {
     errors.materialDescription = 'Material description minimal 3 karakter'
   }
 
@@ -509,16 +474,6 @@ export async function updateFsa(fsaId, payload, actor) {
     note: `FSA diperbarui setelah rework dan dikembalikan ke Waiting Approval SPR`,
   })
 
-  const registered = await registerCustomMaterials(partNumbers, materialDescription, fsa.id, actor.id)
-  for (const part of registered) {
-    fsa.history.push({
-      at: now,
-      byId: actor.id,
-      action: 'material_registered',
-      note: `Part number ${part} didaftarkan sebagai material baru`,
-    })
-  }
-
   return saveFsaRow(fsa)
 }
 
@@ -540,7 +495,7 @@ export async function createFsa(payload, actor) {
 
   const partNumbers = String(body.partNumber ?? '')
     .toUpperCase()
-    .split(/[,\n;]+/)
+    .split(',')
     .map((part) => part.trim())
     .filter(Boolean)
   if (partNumbers.length === 0) {
@@ -549,11 +504,7 @@ export async function createFsa(payload, actor) {
   const partNumber = partNumbers.join(',')
 
   const materialDescription = String(body.materialDescription ?? '').trim()
-  const descSlots = String(body.materialDescription ?? '').split(',')
-  const missingDesc = partNumbers.filter((_, idx) => !(descSlots[idx] ?? '').trim())
-  if (missingDesc.length > 0) {
-    errors.materialDescription = `Material description wajib diisi untuk: ${missingDesc.join(', ')}`
-  } else if (materialDescription.length < 3) {
+  if (materialDescription.length < 3) {
     errors.materialDescription = 'Material description minimal 3 karakter'
   }
 
@@ -627,7 +578,6 @@ export async function createFsa(payload, actor) {
   }
 
   const now = new Date().toISOString()
-  const registered = await registerCustomMaterials(partNumbers, materialDescription, fsaId, actor.id)
   const fsa = {
     id: fsaId,
     fsaNumber,
@@ -654,12 +604,6 @@ export async function createFsa(payload, actor) {
     createdById: actor.id,
     history: [
       { at: now, byId: actor.id, action: 'created', note: `FSA ${fsaNumber} dibuat` },
-      ...registered.map((part) => ({
-        at: now,
-        byId: actor.id,
-        action: 'material_registered',
-        note: `Part number ${part} didaftarkan sebagai material baru`,
-      })),
     ],
   }
 

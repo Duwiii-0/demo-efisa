@@ -1,7 +1,7 @@
 export function splitParts(value) {
   return String(value ?? '')
     .toUpperCase()
-    .split(/[,\n;]+/)
+    .split(',')
     .map((part) => part.trim())
     .filter(Boolean)
 }
@@ -16,13 +16,7 @@ export function validateForm(form, users) {
   if (splitParts(general.partNumber).length === 0) {
     errors.partNumber = 'Part number wajib diisi'
   }
-  // Setiap part wajib punya slot desc (sejajar koma). Part kuning (baru)
-  // tidak bisa lanjut sebelum desc-nya diisi manual.
-  const descSlots = String(general.materialDescription ?? '').split(',')
-  const missingDesc = splitParts(general.partNumber).filter((_, idx) => !(descSlots[idx] ?? '').trim())
-  if (missingDesc.length > 0) {
-    errors.materialDescription = `Material description wajib diisi untuk: ${missingDesc.join(', ')}`
-  } else if (general.materialDescription.trim().length < 3) {
+  if (general.materialDescription.trim().length < 3) {
     errors.materialDescription = 'Material description minimal 3 karakter'
   }
   if (general.drawingRevision === '' || Number(general.drawingRevision) < 0) {

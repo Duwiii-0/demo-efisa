@@ -63,10 +63,6 @@ export const api = {
   downloadUrl: (storedName) => `/api/files/${storedName}`,
   signUpload: (fileName, mime, fsaId) =>
     request('/api/uploads/sign', { method: 'POST', body: { fileName, mime, fsaId } }),
-  lookupMaterial: (partNumber) =>
-    request(`/api/materials/lookup?partNumber=${encodeURIComponent(partNumber)}`),
-  batchLookupMaterials: (partNumbers) =>
-    request('/api/materials/batch-lookup', { method: 'POST', body: { partNumbers } }),
 }
 
 export async function uploadToStorage(file, fsaId) {

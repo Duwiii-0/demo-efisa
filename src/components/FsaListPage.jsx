@@ -3,15 +3,8 @@ import { api } from '../lib/api.js'
 import { Alert, Button, Card, Spinner } from './ui.jsx'
 import { badgeClass, findName, formatDate, formatTime } from '../lib/format.js'
 import { assignedActionableKeys } from '../lib/fsaForm.js'
-import { splitParts } from '../lib/validation.js'
 
-export function partChipClass(status) {
-  if (status === 'master') return 'border-emerald-300 bg-emerald-100 text-emerald-800'
-  if (!status) return 'border-slate-200 bg-slate-100 text-slate-400'
-  return 'border-amber-300 bg-amber-100 text-amber-800'
-}
-
-function FsaTable({ items, reference, onOpenDetail, emptyText, onAct, busyId, sort, onToggleSort, materialMap = {}, showActions = true }) {
+function FsaTable({ items, reference, onOpenDetail, emptyText, onAct, busyId, sort, onToggleSort, showActions = true }) {
   const colCount = showActions ? 7 : 6
 
   return (
@@ -54,22 +47,7 @@ function FsaTable({ items, reference, onOpenDetail, emptyText, onAct, busyId, so
                 className="cursor-pointer transition hover:bg-sky-50/60"
               >
                 <td className="whitespace-nowrap px-5 py-3 text-xs font-semibold text-sky-700">{fsa.fsaNumber}</td>
-                <td className="px-5 py-3">
-                  <div className="flex max-w-56 flex-wrap gap-1">
-                    {splitParts(fsa.partNumber).map((part, idx) => {
-                      const status = materialMap[part]?.status ?? null
-                      return (
-                        <span
-                          key={`${part}-${idx}`}
-                          className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 font-mono text-[11px] font-semibold ${partChipClass(status)}`}
-                        >
-                          <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                          {part}
-                        </span>
-                      )
-                    })}
-                  </div>
-                </td>
+                <td className="px-5 py-3 font-mono text-xs">{fsa.partNumber}</td>
                 <td className="max-w-xs truncate px-5 py-3 text-slate-600">{fsa.materialDescription}</td>
                 <td className="min-w-40 whitespace-nowrap px-5 py-3 text-slate-600">{findName(reference.suppliers, fsa.supplierId)}</td>
                 <td className="px-5 py-3 text-center [&>span]:max-w-32 [&>span]:text-center [&>span]:whitespace-normal [&>span]:leading-tight">
@@ -131,9 +109,7 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, onFlash
   const [actionError, setActionError] = useState('')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
-  const [availabilityFilter, setAvailabilityFilter] = useState('')
   const [sort, setSort] = useState({ field: 'createdAt', dir: 'desc' })
-  const [materialMap, setMaterialMap] = useState({})
   const me = reference.me
 
   useEffect(() => {
@@ -185,14 +161,6 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, onFlash
     return baseList
       .filter((fsa) => {
         if (statusFilter && fsa.approvalStatus !== statusFilter) return false
-        if (availabilityFilter) {
-          const parts = splitParts(fsa.partNumber)
-          if (parts.length === 0) return false
-          const isAvailable = parts.every((part) => materialMap[part]?.status === 'master')
-          const isNotAvailable = parts.some((part) => materialMap[part] && materialMap[part].status !== 'master')
-          if (availabilityFilter === 'available' && !isAvailable) return false
-          if (availabilityFilter === 'not_available' && !isNotAvailable) return false
-        }
         if (keyword) {
           const haystack = `${fsa.fsaNumber} ${fsa.partNumber} ${fsa.materialDescription} ${findName(reference.suppliers, fsa.supplierId)}`.toLowerCase()
           if (!haystack.includes(keyword)) return false
@@ -210,25 +178,7 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, onFlash
         }
         return sort.dir === 'desc' ? b.createdAt.localeCompare(a.createdAt) : a.createdAt.localeCompare(b.createdAt)
       })
-  }, [baseList, search, statusFilter, availabilityFilter, materialMap, sort, reference.suppliers])
-
-  // Batch lookup status master untuk semua part (hijau=master, kuning=baru).
-  useEffect(() => {
-    if (!baseList || baseList.length === 0) return
-    const uniq = [...new Set(baseList.flatMap((fsa) => splitParts(fsa.partNumber)))].filter(
-      (part) => !materialMap[part],
-    )
-    if (uniq.length === 0) return
-    let active = true
-    api
-      .batchLookupMaterials(uniq)
-      .then((data) => active && setMaterialMap((prev) => ({ ...prev, ...(data.results ?? {}) })))
-      .catch(() => {})
-    return () => {
-      active = false
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [baseList])
+  }, [baseList, search, statusFilter, sort, reference.suppliers])
 
   async function handleAction(fsa, action) {
     if (action === 'show') {
@@ -319,21 +269,11 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, onFlash
             ))}
           </select>
 
-          <select
-            className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
-            value={availabilityFilter}
-            onChange={(event) => setAvailabilityFilter(event.target.value)}
-          >
-            <option value="">Semua part</option>
-            <option value="available">Available</option>
-            <option value="not_available">Not available</option>
-          </select>
-
-          {(search || statusFilter || availabilityFilter) ? (
+          {(search || statusFilter) ? (
             <Button
               variant="secondary"
               className="shrink-0 whitespace-nowrap"
-              onClick={() => { setSearch(''); setStatusFilter(''); setAvailabilityFilter('') }}
+              onClick={() => { setSearch(''); setStatusFilter('') }}
             >
               Reset
             </Button>
@@ -351,7 +291,6 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, onFlash
           onAct={handleAction}
           busyId={busyId}
           sort={sort}
-          materialMap={materialMap}
           showActions={view !== 'all'}
           onToggleSort={(field) =>
             setSort((current) =>

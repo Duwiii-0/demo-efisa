@@ -30,14 +30,12 @@ import {
 } from './server/uploads.js'
 import { getSupabaseAdmin, UPLOADS_BUCKET } from './server/supabase.js'
 import {
-  batchLookupMaterials,
   findUserByEmail,
   findUserById,
   getAllUsers,
   getFsaById,
   isSupabaseEnabled,
   listFsas,
-  lookupMaterial,
 } from './server/store.js'
 
 export const app = express()
@@ -149,32 +147,6 @@ app.get('/api/reference', requireAuth, async (req, res, next) => {
 app.get('/api/fsa/next-number', requireAuth, async (req, res, next) => {
   try {
     res.json({ fsaNumber: await buildNextNumber(), createdAt: new Date().toISOString() })
-  } catch (error) {
-    next(error)
-  }
-})
-
-// Material lookup: hijau hanya jika ada di master_materials.
-// Trigger frontend: Enter, koma, paste.
-app.get('/api/materials/lookup', requireAuth, async (req, res, next) => {
-  try {
-    const partNumber = String(req.query.partNumber ?? '').trim().toUpperCase()
-    if (!partNumber) {
-      res.status(400).json({ error: 'partNumber wajib diisi' })
-      return
-    }
-    const result = await lookupMaterial(partNumber)
-    res.json(result)
-  } catch (error) {
-    next(error)
-  }
-})
-
-app.post('/api/materials/batch-lookup', requireAuth, async (req, res, next) => {
-  try {
-    const parts = Array.isArray(req.body?.partNumbers) ? req.body.partNumbers : []
-    const results = await batchLookupMaterials(parts)
-    res.json({ results })
   } catch (error) {
     next(error)
   }
