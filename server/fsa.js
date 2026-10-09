@@ -337,6 +337,11 @@ export async function updateFsa(fsaId, payload, actor) {
   const categoryId = pickId(body.categoryId, CATEGORY_IDS, 'category', errors)
   const reasonId = pickId(body.reasonId, REASON_IDS, 'reasonOfFsa', errors)
 
+  // Jika pilih Others/Other, user wajib ketik sendiri
+  const supplierOther = String(body.supplierOther ?? '').trim().slice(0, 200)
+  if (supplierId === 'other' && supplierOther.length < 3) {
+    errors.supplierOther = 'Nama supplier lainnya wajib diisi minimal 3 karakter'
+  }
   const categoryOther = String(body.categoryOther ?? '').trim().slice(0, 200)
   if (categoryId === 'others' && categoryOther.length < 3) {
     errors.categoryOther = 'Kategori lainnya wajib diisi minimal 3 karakter'
@@ -454,6 +459,7 @@ export async function updateFsa(fsaId, payload, actor) {
   fsa.drawingRevision = drawingRevision
   fsa.sourcingVolume = sourcingVolume
   fsa.supplierId = supplierId
+  fsa.supplierOther = supplierId === 'other' ? supplierOther : ''
   fsa.categoryId = categoryId
   fsa.categoryOther = categoryId === 'others' ? categoryOther : ''
   fsa.reasonId = reasonId
@@ -530,6 +536,10 @@ export async function createFsa(payload, actor) {
   const reasonId = pickId(body.reasonId, REASON_IDS, 'reasonOfFsa', errors)
 
   // Jika pilih Others/Other, user wajib ketik sendiri
+  const supplierOther = String(body.supplierOther ?? '').trim().slice(0, 200)
+  if (supplierId === 'other' && supplierOther.length < 3) {
+    errors.supplierOther = 'Nama supplier lainnya wajib diisi minimal 3 karakter'
+  }
   const categoryOther = String(body.categoryOther ?? '').trim().slice(0, 200)
   if (categoryId === 'others' && categoryOther.length < 3) {
     errors.categoryOther = 'Kategori lainnya wajib diisi minimal 3 karakter'
@@ -588,6 +598,7 @@ export async function createFsa(payload, actor) {
     drawingRevision,
     sourcingVolume,
     supplierId,
+    supplierOther: supplierId === 'other' ? supplierOther : '',
     categoryId,
     categoryOther: categoryId === 'others' ? categoryOther : '',
     reasonId,

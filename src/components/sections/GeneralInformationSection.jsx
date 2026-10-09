@@ -104,8 +104,21 @@ export default function GeneralInformationSection({ form, errors, reference, onC
                 {supplier.name}
               </option>
             ))}
+            <option value="other">Other</option>
           </Select>
         </Field>
+
+        {general.supplierId === 'other' ? (
+          <Field label="Supplier Lainnya" required error={errors.supplierOther}>
+            <Input
+              value={general.supplierOther ?? ''}
+              onChange={set('supplierOther')}
+              placeholder="Contoh: PT Supplier Baru Indonesia"
+              invalid={Boolean(errors.supplierOther)}
+              disabled={disabled}
+            />
+          </Field>
+        ) : null}
 
         {general.createdAt && !hideCreatedAt ? (
           <Field label="FSA Date of Creation">

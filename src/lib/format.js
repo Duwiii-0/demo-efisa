@@ -21,6 +21,16 @@ export const badgeClass = (id, size = 'sm') =>
 
 export const findName = (list, id, key = 'name') => list.find((item) => item.id === id)?.[key] ?? '-'
 
+export const isOtherSupplier = (fsa) => fsa?.supplierId === 'other'
+
+export const supplierDisplayName = (fsa, suppliers) => {
+  if (isOtherSupplier(fsa)) {
+    const custom = String(fsa?.supplierOther ?? '').trim()
+    return custom || 'Other'
+  }
+  return findName(suppliers, fsa?.supplierId)
+}
+
 export function formatDate(value) {
   if (!value) return '-'
   const date = new Date(value)

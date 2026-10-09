@@ -39,6 +39,7 @@ function toFsaRow(fsa, createdById) {
     drawing_revision: fsa.drawingRevision,
     sourcing_volume: null,
     supplier_id: fsa.supplierId,
+    supplier_other: fsa.supplierOther ?? '',
     category_id: fsa.categoryId,
     category_other: fsa.categoryOther ?? '',
     reason_id: fsa.reasonId,

@@ -127,6 +127,7 @@ function sampleFsa(overrides) {
     materialDescription: 'Bracket holder, aluminium ALSI12MG, anodized',
     drawingRevision: 0,
     supplierId: 'sup-01',
+    supplierOther: '',
     categoryId: 'machined_parts',
     categoryOther: '',
     reasonId: 'new_material',
