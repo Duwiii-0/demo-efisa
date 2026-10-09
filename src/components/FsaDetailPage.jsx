@@ -189,7 +189,7 @@ export default function FsaDetailPage({ reference, onBack, onEdit }) {
       {error ? <Alert>{error}</Alert> : null}
 
       <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
-        <ol className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <ol className="mx-auto grid w-full max-w-4xl grid-cols-3 gap-3">
           {DETAIL_STEPS.map((label, index) => {
             const activeStep = index === stepIndex
             return (
