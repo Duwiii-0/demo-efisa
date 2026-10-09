@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react'
 import { Field, SectionCard } from '../ui.jsx'
 import { formatBytes } from '../../lib/format.js'
-import { isImage, MAX_FILE_SIZE, MAX_FSA_FILES } from '../../lib/validation.js'
+import { DOCUMENT_ACCEPT, FSA_DOCUMENT_FIELDS, MAX_FILES_PER_FIELD } from '../../lib/fsaForm.js'
+import { isAllowedDocument, isImage, MAX_FILE_SIZE } from '../../lib/validation.js'
 import { compressImage } from '../../lib/image.js'
 import { uploadToStorage } from '../../lib/api.js'
 
@@ -84,16 +85,25 @@ export default function PpapDocumentsSection({ form, errors, onChange, fsaId }) 
     }
   }
 
-  async function handlePpap(files) {
+  async function handleSlotFiles(fieldKey, fieldLabel, files) {
     setLocalError('')
-    if (documents.ppap.length + files.length > MAX_FSA_FILES) {
-      setLocalError(`Maksimal ${MAX_FSA_FILES} file FSA`)
+    if (!files.length) return
+    const current = documents[fieldKey] ?? []
+
+    if (current.length + files.length > MAX_FILES_PER_FIELD) {
+      setLocalError(`${fieldLabel}: maksimal ${MAX_FILES_PER_FIELD} file`)
       return
     }
 
-    const invalid = files.find((file) => file.size > MAX_FILE_SIZE)
-    if (invalid) {
-      setLocalError(`File ${invalid.name} melebihi 10 MB`)
+    const tooBig = files.find((file) => file.size > MAX_FILE_SIZE)
+    if (tooBig) {
+      setLocalError(`File ${tooBig.name} melebihi 10 MB`)
+      return
+    }
+
+    const badType = files.find((file) => !isAllowedDocument(file))
+    if (badType) {
+      setLocalError(`File ${badType.name} harus PDF, Excel, Word, atau gambar`)
       return
     }
 
@@ -105,7 +115,7 @@ export default function PpapDocumentsSection({ form, errors, onChange, fsaId }) 
           return uploadToStorage(compressed, fsaId)
         }),
       )
-      setDocuments({ ppap: [...documents.ppap, ...metas] })
+      setDocuments({ [fieldKey]: [...current, ...metas] })
     } catch (err) {
       setLocalError(err.message)
     } finally {
@@ -153,36 +163,45 @@ export default function PpapDocumentsSection({ form, errors, onChange, fsaId }) 
           </div>
         </Field>
 
-        <Field
-          label="FSA Document"
-          hint={`Multiple file upload, maksimal ${MAX_FSA_FILES} file`}
-          error={errors.ppapDocuments}
-        >
-          <div className="space-y-3">
-            <UploadButton
-              accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.zip"
-              multiple
-              disabled={documents.ppap.length >= MAX_FSA_FILES || uploading}
-              label="Upload file FSA"
-              onPick={handlePpap}
-            />
-            {documents.ppap.length ? (
-              <ul className="space-y-2">
-                {documents.ppap.map((file, index) => (
-                  <FileRow
-                    key={`${file.storedName}-${index}`}
-                    file={file}
-                    onRemove={() => setDocuments({ ppap: documents.ppap.filter((_, i) => i !== index) })}
-                  />
-                ))}
-              </ul>
-            ) : (
-              <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-4 text-sm text-slate-500">
-                Belum ada file FSA. Upload antara lain dimensional report, material cert, test result.
-              </p>
-            )}
-          </div>
-        </Field>
+        {FSA_DOCUMENT_FIELDS.map((field) => {
+          const files = documents[field.key] ?? []
+          return (
+            <Field
+              key={field.key}
+              label={field.label}
+              required={field.required}
+              hint={`Multiple file upload, maksimal ${MAX_FILES_PER_FIELD} file (PDF/Excel/Word/gambar)`}
+              error={errors[`documents.${field.key}`]}
+            >
+              <div className="space-y-3">
+                <UploadButton
+                  accept={DOCUMENT_ACCEPT}
+                  multiple
+                  disabled={files.length >= MAX_FILES_PER_FIELD || uploading}
+                  label={files.length ? 'Tambah file' : 'Upload file'}
+                  onPick={(picked) => handleSlotFiles(field.key, field.label, picked)}
+                />
+                {files.length ? (
+                  <ul className="space-y-2">
+                    {files.map((file, index) => (
+                      <FileRow
+                        key={`${file.storedName}-${index}`}
+                        file={file}
+                        onRemove={() =>
+                          setDocuments({ [field.key]: files.filter((_, i) => i !== index) })
+                        }
+                      />
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-4 text-sm text-slate-500">
+                    Belum ada file {field.label}.
+                  </p>
+                )}
+              </div>
+            </Field>
+          )
+        })}
       </div>
     </SectionCard>
   )

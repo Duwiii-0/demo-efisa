@@ -14,7 +14,7 @@ create table if not exists public.users (
   is_demo_login boolean not null default false
 );
 
--- 2) FSAs (documents/checklist/approvals/history disimpan sebagai JSONB
+-- 2) FSAs (documents/approvals/history disimpan sebagai JSONB
 --    agar logika validasi di server/fsa.js tidak berubah)
 create table if not exists public.fsas (
   id uuid primary key,
@@ -37,8 +37,7 @@ create table if not exists public.fsas (
   completed_at timestamptz,
   verifier_dm_id text,
   verifier_ft_id text,
-  documents jsonb not null default '{"productPhoto": null, "ppap": []}',
-  checklist jsonb not null default '{}',
+  documents jsonb not null default '{"productPhoto": null}',
   approvals jsonb not null default '{}',
   created_by_id text,
   history jsonb not null default '[]'

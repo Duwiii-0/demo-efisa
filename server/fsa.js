@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import {
   APPROVAL_FUNCTIONS,
-  CHECKLIST_STATUSES,
   FSA_REASONS,
   PART_CATEGORIES,
   FSA_LEVELS,
@@ -22,7 +21,6 @@ import { MAX_FILES } from './uploads.js'
 
 const DECISION_IDS = new Set(['pending', 'approved', 'rejected', 'rework'])
 const SAMPLE_QUANTITY_IDS = new Set([0, 3, 10])
-const CHECKLIST_IDS = new Set(CHECKLIST_STATUSES.map((item) => item.id))
 const CATEGORY_IDS = new Set(PART_CATEGORIES.map((item) => item.id))
 const REASON_IDS = new Set(FSA_REASONS.map((item) => item.id))
 const SUPPLIER_IDS = new Set(SUPPLIERS.map((item) => item.id))
@@ -166,55 +164,124 @@ async function userExists(userId) {
   return userExistsById(userId)
 }
 
-function normalizeDocuments(raw, errors) {
-  const rawPpap = Array.isArray(raw?.ppap) ? raw.ppap : []
-  if (rawPpap.length > MAX_FILES) {
-    errors['ppapDocuments'] = `Maksimal ${MAX_FILES} file FSA`
+// Slot dokumen FSA: productPhoto (single, khusus gambar) + 20 slot multiple
+// (PDF, Excel, Word, gambar). Wajib: millCertificate, checkSheet,
+// sampleInstructionPlan, productTrialDocument.
+export const DOCUMENT_KEYS = [
+  'productCatalog',
+  'millCertificate',
+  'sampleInstructionPlan',
+  'productTrialDocument',
+  'checkSheet',
+  'drawing',
+  'engineeringChangeDocument',
+  'dimensionalMeasurement',
+  'functionalTest',
+  'qualifiedLaboratoryDocumentation',
+  'appearanceApprovalReport',
+  'customerEngineeringApproval',
+  'designFmea',
+  'controlPlan',
+  'measurementSystemAnalysis',
+  'initialProcessStudies',
+  'processFlowDiagram',
+  'sampleProduct',
+  'masterSample',
+  'checkingAids',
+]
+
+const DOCUMENT_LABELS = {
+  productCatalog: 'Product Catalog',
+  millCertificate: 'Mill Sheet / Mill Certificate',
+  sampleInstructionPlan: 'Sample Instruction Plan',
+  productTrialDocument: 'Product Trial Document',
+  checkSheet: 'Check Sheet',
+  drawing: 'Drawing',
+  engineeringChangeDocument: 'Engineering Change Document',
+  dimensionalMeasurement: 'Dimensional Measurement',
+  functionalTest: 'Functional Test',
+  qualifiedLaboratoryDocumentation: 'Qualified Laboratory Documentation',
+  appearanceApprovalReport: 'Appearance Approval Report',
+  customerEngineeringApproval: 'Customer Engineering Approval',
+  designFmea: 'Design FMEA',
+  controlPlan: 'Control Plan',
+  measurementSystemAnalysis: 'Measurement System Analysis',
+  initialProcessStudies: 'Initial Process Studies',
+  processFlowDiagram: 'Proses Flow Diagram',
+  sampleProduct: 'Sample Product',
+  masterSample: 'Master Sample',
+  checkingAids: 'Checking Aids',
+}
+
+export const REQUIRED_DOCUMENT_KEYS = ['millCertificate', 'checkSheet', 'sampleInstructionPlan', 'productTrialDocument']
+
+const ALLOWED_DOCUMENT_EXTENSIONS = new Set(['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'webp', 'gif'])
+
+function isAllowedDocumentFile(file) {
+  const mime = String(file?.mime ?? '')
+  if (mime.startsWith('image/')) return true
+  if (
+    mime === 'application/pdf' ||
+    mime === 'application/msword' ||
+    mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+    mime === 'application/vnd.ms-excel' ||
+    mime === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  ) {
+    return true
   }
+  const name = String(file?.fileName ?? '')
+  const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : ''
+  return ALLOWED_DOCUMENT_EXTENSIONS.has(ext)
+}
 
-  const productPhoto = raw?.productPhoto ?? raw?.appearance ?? null
-
-  if (productPhoto && !productPhoto.mime?.startsWith('image/')) {
-    errors['productPhoto'] = 'File product photo harus berupa gambar'
-  }
-
-  const ppap = rawPpap.slice(0, MAX_FILES).map((file) => ({
+function toFileMeta(file) {
+  return {
     fileName: file.fileName,
     storedName: file.storedName,
     mime: file.mime,
     size: file.size,
     uploadedAt: file.uploadedAt ?? new Date().toISOString(),
-  }))
-
-  return { productPhoto, ppap }
+  }
 }
 
-function normalizeChecklist(raw, errors) {
-  const source = raw ?? {}
-  const read = (key) => {
-    const value = CHECKLIST_IDS.has(source[key]) ? source[key] : 'not_available'
-    if (source[key] && !CHECKLIST_IDS.has(source[key])) {
-      errors[`checklist.${key}`] = `Nilai checklist ${key} tidak valid`
+export function emptyDocuments() {
+  return {
+    productPhoto: null,
+    ...Object.fromEntries(DOCUMENT_KEYS.map((key) => [key, []])),
+  }
+}
+
+function checkSlotFiles(key, files, errors) {
+  const label = DOCUMENT_LABELS[key] ?? key
+  const list = Array.isArray(files) ? files : []
+  if (REQUIRED_DOCUMENT_KEYS.includes(key) && list.length === 0) {
+    errors[`documents.${key}`] = `${label} wajib diunggah`
+  } else if (list.length > MAX_FILES) {
+    errors[`documents.${key}`] = `${label} maksimal ${MAX_FILES} file`
+  } else {
+    const invalid = list.find((file) => !file?.storedName || !isAllowedDocumentFile(file))
+    if (invalid) {
+      errors[`documents.${key}`] = `File ${invalid.fileName ?? 'tersebut'} harus PDF, Excel, Word, atau gambar`
     }
-    return value
+  }
+  return list.filter((file) => file?.storedName).map(toFileMeta)
+}
+
+function normalizeDocuments(raw, errors) {
+  const source = raw ?? {}
+
+  const productPhoto = source.productPhoto ?? null
+  if (productPhoto && !productPhoto.mime?.startsWith('image/')) {
+    errors['productPhoto'] = 'File product photo harus berupa gambar'
   }
 
-  return {
-    appearanceApprovalReport: read('appearanceApprovalReport'),
-    checkSheet: read('checkSheet'),
-    millCertificate: read('millCertificate'),
-    drawing: read('drawing'),
-    engineeringChangeDocument: read('engineeringChangeDocument'),
-    customerEngineeringApproval: read('customerEngineeringApproval'),
-    designFmea: read('designFmea'),
-    processFmea: read('processFmea'),
-    controlPlan: read('controlPlan'),
-    measurementSystemAnalysis: read('measurementSystemAnalysis'),
-    dimensionalMeasurement: read('dimensionalMeasurement'),
-    functionalTest: read('functionalTest'),
-    initialProcessStudies: read('initialProcessStudies'),
-    qualifiedLaboratoryDocumentation: read('qualifiedLaboratoryDocumentation'),
+  const documents = { productPhoto: productPhoto ? toFileMeta(productPhoto) : null }
+
+  for (const key of DOCUMENT_KEYS) {
+    documents[key] = checkSlotFiles(key, source[key], errors)
   }
+
+  return documents
 }
 
 async function normalizeApprovals(raw, errors) {
@@ -368,7 +435,12 @@ export async function updateFsa(fsaId, payload, actor) {
     }
   }
 
-  const supplierId = pickId(body.supplierId, SUPPLIER_IDS, 'supplierName', errors)
+  let supplierId = null
+  if (body.supplierId === 'other') {
+    supplierId = 'other'
+  } else {
+    supplierId = pickId(body.supplierId, SUPPLIER_IDS, 'supplierName', errors)
+  }
   const categoryId = pickId(body.categoryId, CATEGORY_IDS, 'category', errors)
   const reasonId = pickId(body.reasonId, REASON_IDS, 'reasonOfFsa', errors)
 
@@ -403,62 +475,27 @@ export async function updateFsa(fsaId, payload, actor) {
     errors.verifierFt = 'Verifikator FT wajib dipilih'
   }
 
-  // Documents: productPhoto dan ppap diproses secara independen.
-  // null productPhoto = pertahankan yang lama; ppap baru ditambahkan ke yang lama.
-  let documents = { ...fsa.documents }
+  // Documents: productPhoto + 20 slot diproses per key.
+  // productPhoto null = pertahankan yang lama;
+  // tiap slot yang hadir sebagai array = daftar lengkap yang diinginkan.
+  let documents = { ...emptyDocuments(), ...(fsa.documents ?? {}) }
   if (payload?.documents) {
-    const { productPhoto: rawProductPhoto, appearance: rawLegacy, ppap: rawPpap } = payload.documents ?? {}
-    const rawPhoto = rawProductPhoto !== undefined ? rawProductPhoto : rawLegacy
+    const rawPhoto = payload.documents.productPhoto
 
     // Product Photo: hanya replace jika ada file baru (bukan null)
     if (rawPhoto !== null && rawPhoto !== undefined) {
       if (!rawPhoto.mime?.startsWith('image/')) {
         errors['productPhoto'] = 'File product photo harus berupa gambar'
       } else {
-        documents.productPhoto = {
-          fileName: rawPhoto.fileName,
-          storedName: rawPhoto.storedName,
-          mime: rawPhoto.mime,
-          size: rawPhoto.size,
-          uploadedAt: rawPhoto.uploadedAt ?? new Date().toISOString(),
-        }
-        delete documents.appearance
+        documents.productPhoto = toFileMeta(rawPhoto)
       }
     }
 
-    // FSA: payload berisi daftar lengkap yang diinginkan.
-    // - File dengan storedName = sudah tersimpan di server, pertahankan
-    // - File baru = metadata dari direct upload
-    // Jika payload.ppap hadir (walau empty array), replace seluruh ppap list.
-    if (Array.isArray(rawPpap)) {
-      const resolved = []
-      for (const f of rawPpap) {
-        if (f.storedName) {
-          // Existing file – cari di dokumen lama dan pertahankan
-          const existing = fsa.documents.ppap.find((p) => p.storedName === f.storedName)
-          if (existing) {
-            resolved.push(existing)
-          } else {
-            // File baru yang sudah diupload langsung ke Storage
-            resolved.push({
-              fileName: f.fileName,
-              storedName: f.storedName,
-              mime: f.mime,
-              size: f.size,
-              uploadedAt: f.uploadedAt ?? new Date().toISOString(),
-            })
-          }
-        }
-      }
-      if (resolved.length > MAX_FILES) {
-        errors['ppapDocuments'] = `Maksimal ${MAX_FILES} file FSA`
-      } else {
-        documents.ppap = resolved
-      }
+    for (const key of DOCUMENT_KEYS) {
+      if (payload.documents[key] === undefined) continue
+      documents[key] = checkSlotFiles(key, payload.documents[key], errors)
     }
   }
-
-  const checklist = normalizeChecklist(payload?.checklist, errors)
 
   // Approvals: update assignee tapi reset semua decision ke pending (rework dimulai ulang)
   const approvalInput = payload?.approvals ?? {}
@@ -504,7 +541,6 @@ export async function updateFsa(fsaId, payload, actor) {
   fsa.verifierDmId = body.verifierDmId
   fsa.verifierFtId = body.verifierFtId
   fsa.documents = documents
-  fsa.checklist = checklist
   fsa.approvals = resetApprovals
   fsa.approvalStatus = 'waiting_approval_spr'
   fsa.completedAt = null
@@ -580,7 +616,12 @@ export async function createFsa(payload, actor) {
     }
   }
 
-  const supplierId = pickId(body.supplierId, SUPPLIER_IDS, 'supplierName', errors)
+  let supplierId = null
+  if (body.supplierId === 'other') {
+    supplierId = 'other'
+  } else {
+    supplierId = pickId(body.supplierId, SUPPLIER_IDS, 'supplierName', errors)
+  }
   const categoryId = pickId(body.categoryId, CATEGORY_IDS, 'category', errors)
   const reasonId = pickId(body.reasonId, REASON_IDS, 'reasonOfFsa', errors)
 
@@ -616,17 +657,16 @@ export async function createFsa(payload, actor) {
   }
 
   const fsaId = randomUUID()
-  const checklist = normalizeChecklist(payload?.checklist, errors)
   const approvals = await normalizeApprovals(payload?.approvals, errors)
 
-  let documents = { productPhoto: null, ppap: [] }
+  let documents = emptyDocuments()
   try {
     documents = normalizeDocuments(payload?.documents, errors)
   } catch (error) {
     errors.documents = error.message
   }
 
-  if (!payload?.documents?.productPhoto && !payload?.documents?.appearance) {
+  if (!payload?.documents?.productPhoto) {
     errors.productPhoto = 'Foto product photo wajib diunggah'
   }
 
@@ -661,7 +701,6 @@ export async function createFsa(payload, actor) {
     verifierDmId: body.verifierDmId,
     verifierFtId: body.verifierFtId,
     documents,
-    checklist,
     approvals,
     createdById: actor.id,
     history: [
@@ -748,73 +787,6 @@ export async function updateDecision(fsaId, fnKey, payload, actor) {
     note: forceCancel
       ? `${fn.label}: rejected (FSA canceled)`
       : `${fn.label}: ${decision}${typeof payload?.remark === 'string' && payload.remark.trim() ? ` — "${payload.remark.trim()}"` : ''}`,
-  })
-
-  return saveFsaRow(fsa)
-}
-
-const CHECKLIST_UPDATE_ALLOWED = new Set([
-  'checkSheet',
-  'millCertificate',
-  'drawing',
-  'engineeringChangeDocument',
-  'customerEngineeringApproval',
-  'designFmea',
-  'processFmea',
-  'controlPlan',
-  'measurementSystemAnalysis',
-  'dimensionalMeasurement',
-  'functionalTest',
-  'initialProcessStudies',
-  'qualifiedLaboratoryDocumentation',
-  'appearanceApprovalReport',
-])
-
-export async function updateChecklist(fsaId, payload, actor) {
-  const fsa = await getFsaById(fsaId)
-  if (!fsa) return null
-
-  if (fsa.approvalStatus === 'canceled' || fsa.approvalStatus === 'accepted') {
-    const error = new Error('FSA sudah terminal, checklist tidak bisa diubah')
-    error.status = 422
-    throw error
-  }
-
-  if (actor.role === 'procurement') {
-    const error = new Error('Procurement tidak berwenang mengubah checklist')
-    error.status = 403
-    throw error
-  }
-
-  const assignedAsApprover = Object.values(fsa.approvals ?? {}).some(
-    (approval) => approval?.approverId === actor.id,
-  )
-  if (!assignedAsApprover) {
-    const error = new Error('Hanya approver yang di-assign sebagai decision yang boleh mengubah checklist')
-    error.status = 403
-    throw error
-  }
-
-  const errors = {}
-  const checklist = { ...(fsa.checklist ?? {}) }
-  for (const [key, value] of Object.entries(payload ?? {})) {
-    if (!CHECKLIST_UPDATE_ALLOWED.has(key)) continue
-    if (!CHECKLIST_IDS.has(value)) {
-      errors[key] = `Nilai checklist ${key} tidak valid`
-      continue
-    }
-    checklist[key] = value
-  }
-  if (Object.keys(errors).length > 0) {
-    throw new ValidationError(errors, 'Data checklist tidak valid')
-  }
-
-  fsa.checklist = checklist
-  fsa.history.push({
-    at: new Date().toISOString(),
-    byId: actor.id,
-    action: 'checklist',
-    note: 'Checklist diperbarui',
   })
 
   return saveFsaRow(fsa)
