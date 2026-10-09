@@ -135,6 +135,22 @@ function AppRoutes() {
           }
         />
         <Route
+          path="/drafts"
+          element={
+            <FsaListPage
+              reference={reference}
+              canCreate={session.user.role === 'procurement'}
+              view="draft"
+              onCreate={() => navigate('/create')}
+              onFlash={(message) => setFlash(message)}
+              onOpenDetail={(id) => {
+                setFlash('')
+                navigate(`/fsa/${id}/edit`)
+              }}
+            />
+          }
+        />
+        <Route
           path="/create"
           element={
             <FsaCreatePage
@@ -142,8 +158,13 @@ function AppRoutes() {
               user={session.user}
               onCancel={() => navigate('/')}
               onCreated={(fsa) => {
-                setFlash(`FSA dengan id ${fsa.fsaNumber} berhasil dibuat dan menunggu approval.`)
-                navigate(`/fsa/${fsa.id}`)
+                if (fsa.approvalStatus === 'draft') {
+                  setFlash(`Draft ${fsa.fsaNumber} berhasil disimpan. Lanjutkan kapan saja dari menu FSA Draft.`)
+                  navigate('/drafts')
+                } else {
+                  setFlash(`FSA dengan id ${fsa.fsaNumber} berhasil dibuat dan menunggu approval.`)
+                  navigate(`/fsa/${fsa.id}`)
+                }
               }}
             />
           }
@@ -168,9 +189,18 @@ function AppRoutes() {
             <FsaEditPage
               reference={reference}
               user={session.user}
-              onCancel={(id) => navigate(`/fsa/${id}`)}
+              onCancel={(id, fsa) => navigate(fsa?.approvalStatus === 'draft' ? '/drafts' : `/fsa/${id}`)}
               onSaved={(fsa) => {
-                setFlash(`FSA dengan id ${fsa.fsaNumber} berhasil diperbarui dan dikembalikan ke Waiting Approval SPR.`)
+                if (fsa.approvalStatus === 'draft') {
+                  setFlash(`Draft ${fsa.fsaNumber} berhasil disimpan.`)
+                  navigate('/drafts')
+                } else {
+                  setFlash(`FSA dengan id ${fsa.fsaNumber} berhasil diperbarui dan dikembalikan ke Waiting Approval SPR.`)
+                  navigate(`/fsa/${fsa.id}`)
+                }
+              }}
+              onSubmitted={(fsa) => {
+                setFlash(`FSA dengan id ${fsa.fsaNumber} berhasil di-submit for approval.`)
                 navigate(`/fsa/${fsa.id}`)
               }}
             />

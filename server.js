@@ -3,7 +3,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import crypto from 'node:crypto'
 import express from 'express'
-import { buildNextNumber, createFsa, updateDecision, updateFsa, ValidationError } from './server/fsa.js'
+import { buildNextNumber, createFsa, deleteDraftFsa, submitDraftFsa, updateDecision, updateFsa, ValidationError } from './server/fsa.js'
 import {
   APPROVAL_DECISIONS,
   APPROVAL_FUNCTIONS,
@@ -203,6 +203,44 @@ app.patch('/api/fsa/:id', requireAuth, requireRole('procurement'), async (req, r
       res.status(422).json({ error: error.message, errors: error.errors })
       return
     }
+    if (error.status) {
+      res.status(error.status).json({ error: error.message })
+      return
+    }
+    next(error)
+  }
+})
+
+app.patch('/api/fsa/:id/submit', requireAuth, requireRole('procurement'), async (req, res, next) => {
+  try {
+    const fsa = await submitDraftFsa(req.params.id, req.body, req.user)
+    if (!fsa) {
+      res.status(404).json({ error: 'FSA tidak ditemukan' })
+      return
+    }
+    res.json({ fsa })
+  } catch (error) {
+    if (error instanceof ValidationError) {
+      res.status(422).json({ error: error.message, errors: error.errors })
+      return
+    }
+    if (error.status) {
+      res.status(error.status).json({ error: error.message })
+      return
+    }
+    next(error)
+  }
+})
+
+app.delete('/api/fsa/:id', requireAuth, requireRole('procurement'), async (req, res, next) => {
+  try {
+    const deleted = await deleteDraftFsa(req.params.id, req.user)
+    if (!deleted) {
+      res.status(404).json({ error: 'FSA tidak ditemukan' })
+      return
+    }
+    res.json({ status: 'ok' })
+  } catch (error) {
     if (error.status) {
       res.status(error.status).json({ error: error.message })
       return

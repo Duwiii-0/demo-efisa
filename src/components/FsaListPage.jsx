@@ -4,8 +4,8 @@ import { Alert, Button, Card, Spinner } from './ui.jsx'
 import { badgeClass, findName, formatDate, formatTime, isOtherSupplier, supplierDisplayName } from '../lib/format.js'
 import { assignedActionableKeys } from '../lib/fsaForm.js'
 
-function FsaTable({ items, reference, onOpenDetail, emptyText, onAct, busyId, sort, onToggleSort, showActions = true }) {
-  const colCount = showActions ? 7 : 6
+function FsaTable({ items, reference, onOpenDetail, emptyText, onAct, busyId, sort, onToggleSort, showActions = true, draftActions }) {
+  const colCount = showActions || draftActions ? 7 : 6
 
   return (
     <Card>
@@ -22,14 +22,13 @@ function FsaTable({ items, reference, onOpenDetail, emptyText, onAct, busyId, so
               <th className="w-40 whitespace-nowrap px-5 py-3 font-semibold">Part Number</th>
               <th className="min-w-64 px-5 py-3 font-semibold">Material</th>
               <th className="min-w-40 whitespace-nowrap px-5 py-3 font-semibold">Supplier</th>
-              <th className="w-36 whitespace-nowrap px-5 py-3 text-center font-semibold">Status</th>
-              <th
+              <th className="w-36 whitespace-nowrap px-5 py-3 text-center font-semibold">Status</th>              <th
                 className="cursor-pointer select-none whitespace-nowrap px-5 py-3 text-center font-semibold hover:text-slate-700"
                 onClick={() => onToggleSort('createdAt')}
               >
                 Created <span className={`inline-flex items-center align-middle text-[9px] leading-none ${sort.field === 'createdAt' ? '' : 'opacity-40'}`}>{sort.field === 'createdAt' ? (sort.dir === 'desc' ? '▼' : '▲') : '▲▼'}</span>
               </th>
-              {showActions ? <th className="w-32 whitespace-nowrap px-5 py-3 text-center font-semibold">Aksi</th> : null}
+              {showActions || draftActions ? <th className="w-32 whitespace-nowrap px-5 py-3 text-center font-semibold">Aksi</th> : null}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -59,7 +58,27 @@ function FsaTable({ items, reference, onOpenDetail, emptyText, onAct, busyId, so
                   <div>{formatDate(fsa.createdAt)}</div>
                   <div>{formatTime(fsa.createdAt)} WIB</div>
                 </td>
-                {showActions ? (
+                {draftActions ? (
+                <td className="whitespace-nowrap px-5 py-3" onClick={(event) => event.stopPropagation()}>
+                  <div className="flex items-center justify-center gap-2">
+                    <button
+                      type="button"
+                      className="rounded-lg border border-sky-300 bg-sky-50 px-2 py-1.5 text-xs font-semibold text-sky-700 transition hover:bg-sky-100"
+                      onClick={() => draftActions.onEdit(fsa)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-lg border border-rose-300 bg-white px-2 py-1.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50"
+                      disabled={busyId === fsa.id}
+                      onClick={() => draftActions.onDelete(fsa)}
+                    >
+                      {busyId === fsa.id ? '...' : 'Hapus'}
+                    </button>
+                  </div>
+                </td>
+                ) : showActions ? (
                 <td className="whitespace-nowrap px-5 py-3" onClick={(event) => event.stopPropagation()}>
                   {Object.values(fsa.approvals ?? {}).some((approval) => approval?.approverId === reference.me?.id) ? (
                     busyId === fsa.id ? (
@@ -127,6 +146,7 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, onFlash
     if (!items) return null
     return items
       .filter((fsa) => {
+        if (fsa.approvalStatus === 'draft') return false
         if (fsa.approvalStatus === 'rework_required') {
           const sprApproverId = fsa.approvals?.procurement?.approverId
           return sprApproverId ? sprApproverId === me?.id : me?.role === 'procurement'
@@ -138,16 +158,26 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, onFlash
 
   const all = useMemo(() => {
     if (!items) return null
-    return [...items].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    // Draft punya menu sendiri (FSA Draft) dan belum di-submit, jadi disembunyikan dari Data FSA.
+    return items.filter((fsa) => fsa.approvalStatus !== 'draft').sort((a, b) => b.createdAt.localeCompare(a.createdAt))
   }, [items])
+
+  const drafts = useMemo(() => {
+    if (!items) return null
+    if (me?.role !== 'procurement') return []
+    return items
+      .filter((fsa) => fsa.approvalStatus === 'draft')
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+  }, [items, me])
 
   const titles = {
     assigned: ['FSA Assigned to You', ''],
     all: ['Data FSA', ''],
+    draft: ['FSA Draft', 'Draft yang belum di-submit for approval. Klik Edit untuk melanjutkan.'],
   }
   const [title, subtitle] = titles[view] ?? titles.assigned
 
-  const baseList = view === 'assigned' ? assigned : view === 'all' ? all : assigned
+  const baseList = view === 'assigned' ? assigned : view === 'all' ? all : view === 'draft' ? drafts : assigned
 
   const viewStatusOptions = useMemo(() => {
     if (!baseList) return []
@@ -233,6 +263,22 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, onFlash
     }
   }
 
+  async function handleDeleteDraft(fsa) {
+    if (!window.confirm(`Hapus draft ${fsa.fsaNumber}? Tindakan ini tidak bisa dibatalkan.`)) return
+    setBusyId(fsa.id)
+    setActionError('')
+    try {
+      await api.deleteDraft(fsa.id)
+      const data = await api.listFsas({})
+      setItems(data.items)
+      if (onFlash) onFlash(`Draft ${fsa.fsaNumber} berhasil dihapus.`)
+    } catch (err) {
+      setActionError(err.message)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   return (
     <div className="space-y-5">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -291,7 +337,8 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, onFlash
           onAct={handleAction}
           busyId={busyId}
           sort={sort}
-          showActions={view !== 'all'}
+          showActions={view === 'assigned'}
+          draftActions={view === 'draft' ? { onEdit: (fsa) => onOpenDetail(fsa.id), onDelete: handleDeleteDraft } : undefined}
           onToggleSort={(field) =>
             setSort((current) =>
               current.field === field
@@ -306,6 +353,8 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, onFlash
                 ? 'Tidak ada FSA yang ditugaskan ke Anda.'
                 : view === 'all'
                 ? 'Belum ada data FSA.'
+                : view === 'draft'
+                ? 'Belum ada draft. Klik + Create FSA lalu Save Draft.'
                 : 'Tidak ada FSA yang ditugaskan ke Anda.'
           }
         />

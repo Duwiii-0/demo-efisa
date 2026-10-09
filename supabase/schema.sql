@@ -33,6 +33,7 @@ create table if not exists public.fsas (
   date_of_sample_submission text not null,
   sample_quantity int not null default 0,
   created_at timestamptz not null default now(),
+  submitted_at timestamptz,
   approval_status text not null default 'waiting_approval_spr',
   completed_at timestamptz,
   verifier_dm_id text,
@@ -73,6 +74,21 @@ update public.fsas
 set documents = (documents - 'appearance') || jsonb_build_object('productPhoto', documents -> 'appearance')
 where documents ? 'appearance' and not (documents ? 'productPhoto');
 
+-- Migrasi untuk status draft (procurement bisa save draft tanpa validasi):
+-- draft menyimpan field yang belum lengkap sebagai NULL / string kosong.
+alter table public.fsas alter column ppap_level drop not null;
+alter table public.fsas alter column part_number drop not null;
+alter table public.fsas alter column material_description drop not null;
+alter table public.fsas alter column drawing_revision drop not null;
+alter table public.fsas alter column supplier_id drop not null;
+alter table public.fsas alter column category_id drop not null;
+alter table public.fsas alter column reason_id drop not null;
+alter table public.fsas alter column date_of_sample_submission drop not null;
+alter table public.fsas alter column sample_quantity drop not null;
+-- Migrasi untuk timestamp submit to approval:
+alter table public.fsas add column if not exists submitted_at timestamptz;
+-- Backfill: FSA non-draft yang belum punya submitted_at dianggap ter-submit saat dibuat.
+update public.fsas set submitted_at = created_at where submitted_at is null and approval_status <> 'draft';
 -- Kebijakan RLS: matikan RLS untuk demo agar service_role bisa baca/tulis,
 -- frontend TIDAK akses langsung, semua lewat Express /api (auth Bearer).
 alter table public.users disable row level security;

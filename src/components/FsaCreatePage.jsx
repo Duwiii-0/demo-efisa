@@ -28,8 +28,32 @@ export default function FsaCreatePage({ reference, user, onCancel, onCreated }) 
   const [errors, setErrors] = useState({})
   const [submitError, setSubmitError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [draftBusy, setDraftBusy] = useState(false)
+  const [showExitModal, setShowExitModal] = useState(false)
   const [fsaId] = useState(() => crypto.randomUUID())
   const [stepIndex, setStepIndex] = useState(0)
+
+  // Draft = ada isian user selain nilai bawaan (nomor, tanggal hari ini, revision 0).
+  const isDirty = useMemo(() => {
+    const { general, documents, approvals } = form
+    if ((general.partNumber ?? '').trim()) return true
+    if ((general.materialDescription ?? '').trim()) return true
+    if (general.ppapLevel !== '' && general.ppapLevel !== null && general.ppapLevel !== undefined) return true
+    if (general.supplierId) return true
+    if ((general.supplierOther ?? '').trim()) return true
+    if (general.categoryId) return true
+    if ((general.categoryOther ?? '').trim()) return true
+    if (general.reasonId) return true
+    if ((general.reasonOther ?? '').trim()) return true
+    if (general.sampleQuantity !== '' && general.sampleQuantity !== null && general.sampleQuantity !== undefined) return true
+    if (general.sourcingVolume !== '' && general.sourcingVolume !== null && general.sourcingVolume !== undefined) return true
+    if (general.verifierDmId) return true
+    if (general.verifierFtId) return true
+    if (documents.productPhoto) return true
+    if (Object.values(documents).some((value) => Array.isArray(value) && value.length > 0)) return true
+    if (Object.values(approvals ?? {}).some((item) => item?.approverId)) return true
+    return false
+  }, [form])
 
   useEffect(() => {
     let active = true
@@ -81,12 +105,39 @@ export default function FsaCreatePage({ reference, user, onCancel, onCreated }) 
 
   async function handleSubmit(event) {
     event.preventDefault()
+    await submitForApproval()
+  }
+
+  function buildPayload() {
+    return {
+      general: form.general,
+      documents: serializeDocuments(form.documents),
+      approvals: form.approvals,
+    }
+  }
+
+  async function handleSaveDraft() {
+    setSubmitError('')
+    setDraftBusy(true)
+    try {
+      const result = await api.saveDraft(buildPayload())
+      onCreated(result.fsa)
+    } catch (error) {
+      setSubmitError(error.message)
+    } finally {
+      setDraftBusy(false)
+    }
+  }
+
+  async function submitForApproval() {
     const validationErrors = validateForm(form, reference.users)
     setErrors(validationErrors)
     setSubmitError('')
 
     if (Object.keys(validationErrors).length > 0) {
-      setSubmitError('Periksa kembali data yang ditandai merah.')
+      const stepIdx = firstErrorStep(validationErrors)
+      setStepIndex(stepIdx)
+      setSubmitError(`Periksa kembali data pada ${STEPS[stepIdx].label} yang ditandai merah.`)
       window.scrollTo({ top: 0, behavior: 'smooth' })
       return
     }
@@ -109,50 +160,25 @@ export default function FsaCreatePage({ reference, user, onCancel, onCreated }) 
     }
   }
 
-  function stepErrors(stepId) {
-    const all = validateForm(form, reference.users)
-    return Object.fromEntries(Object.entries(all).filter(([key]) => isStepError(key, stepId)))
+  // Navigasi antar section bebas tanpa restrict; validasi hanya saat Submit for Approval.
+  function firstErrorStep(validationErrors) {
+    for (let i = 0; i < STEPS.length; i += 1) {
+      if (Object.keys(validationErrors).some((key) => isStepError(key, STEPS[i].id))) return i
+    }
+    return 0
   }
 
   function goNext() {
-    const current = STEPS[stepIndex]
-    const stepErrorMap = stepErrors(current.id)
-    if (Object.keys(stepErrorMap).length > 0) {
-      setErrors((prev) => ({ ...prev, ...stepErrorMap }))
-      setSubmitError(`Periksa kembali data pada ${current.label} yang ditandai merah.`)
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-      return
-    }
     setSubmitError('')
     setStepIndex((index) => Math.min(index + 1, STEPS.length - 1))
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  function goBack() {
-    setSubmitError('')
-    setStepIndex((index) => Math.max(index - 1, 0))
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
-
   function goToStep(index) {
     if (index === stepIndex) return
-    if (index < stepIndex) {
-      setSubmitError('')
-      setStepIndex(index)
-      return
-    }
-    for (let i = 0; i < index; i += 1) {
-      const stepErrorMap = stepErrors(STEPS[i].id)
-      if (Object.keys(stepErrorMap).length > 0) {
-        setErrors((prev) => ({ ...prev, ...stepErrorMap }))
-        setSubmitError(`Periksa kembali data pada ${STEPS[i].label} yang ditandai merah.`)
-        setStepIndex(i)
-        window.scrollTo({ top: 0, behavior: 'smooth' })
-        return
-      }
-    }
     setSubmitError('')
     setStepIndex(index)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const isLastStep = stepIndex === STEPS.length - 1
@@ -247,18 +273,16 @@ export default function FsaCreatePage({ reference, user, onCancel, onCreated }) 
         <p className="text-xs text-slate-500">
           Dibuat oleh <span className="font-semibold text-slate-700">{user.name}</span>
         </p>
-        <div className="flex gap-3">
-          <Button type="button" variant="secondary" onClick={onCancel}>
+        <div className="flex flex-wrap gap-3">
+          <Button type="button" variant="secondary" onClick={() => (isDirty ? setShowExitModal(true) : onCancel())}>
             Batal
           </Button>
-          {stepIndex > 0 ? (
-            <Button type="button" variant="secondary" onClick={goBack}>
-              Kembali
-            </Button>
-          ) : null}
+          <Button type="button" variant="secondary" disabled={draftBusy || busy} onClick={handleSaveDraft}>
+            {draftBusy ? 'Menyimpan...' : 'Save Draft'}
+          </Button>
           {isLastStep ? (
-            <Button type="submit" disabled={busy}>
-              {busy ? 'Menyimpan...' : 'Submit FSA'}
+            <Button type="submit" disabled={busy || draftBusy}>
+              {busy ? 'Menyimpan...' : 'Submit for Approval'}
             </Button>
           ) : (
             <Button type="button" onClick={goNext}>
@@ -267,6 +291,28 @@ export default function FsaCreatePage({ reference, user, onCancel, onCreated }) 
           )}
         </div>
       </footer>
+
+      {showExitModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4" onClick={() => setShowExitModal(false)}>
+          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl" onClick={(event) => event.stopPropagation()}>
+            <h2 className="text-base font-semibold text-slate-900">Simpan sebagai draft?</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Form sudah ada yang diisi. Simpan sebagai draft agar bisa dilanjutkan kapan saja dari menu FSA Draft.
+            </p>
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <Button variant="secondary" onClick={() => setShowExitModal(false)} disabled={draftBusy}>
+                Batal
+              </Button>
+              <Button variant="secondary" onClick={onCancel} disabled={draftBusy}>
+                Buang
+              </Button>
+              <Button disabled={draftBusy} onClick={handleSaveDraft}>
+                {draftBusy ? 'Menyimpan...' : 'Save Draft'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </form>
   )
 }

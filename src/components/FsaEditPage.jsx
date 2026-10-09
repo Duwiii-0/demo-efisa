@@ -18,23 +18,23 @@ import { toLocalInputValue } from '../lib/format.js'
 function buildFormFromFsa(fsa) {
   return {
     general: {
-      fsaNumber: fsa.fsaNumber,
-      ppapLevel: fsa.ppapLevel,
-      partNumber: fsa.partNumber,
-      materialDescription: fsa.materialDescription,
-      drawingRevision: fsa.drawingRevision ?? 0,
+      fsaNumber: fsa.fsaNumber ?? '',
+      ppapLevel: fsa.ppapLevel ?? '',
+      partNumber: fsa.partNumber ?? '',
+      materialDescription: fsa.materialDescription ?? '',
+      drawingRevision: fsa.drawingRevision ?? '',
       sourcingVolume: fsa.sourcingVolume ?? '',
-      supplierId: fsa.supplierId,
+      supplierId: fsa.supplierId ?? '',
       supplierOther: fsa.supplierOther ?? '',
-      categoryId: fsa.categoryId,
+      categoryId: fsa.categoryId ?? '',
       categoryOther: fsa.categoryOther ?? '',
-      reasonId: fsa.reasonId,
+      reasonId: fsa.reasonId ?? '',
       reasonOther: fsa.reasonOther ?? '',
-      dateOfSampleSubmission: fsa.dateOfSampleSubmission,
+      dateOfSampleSubmission: fsa.dateOfSampleSubmission ?? '',
       sampleQuantity: SAMPLE_QUANTITY_VALUES.includes(Number(fsa.sampleQuantity)) ? Number(fsa.sampleQuantity) : '',
       createdAt: fsa.createdAt,
-      verifierDmId: fsa.verifierDmId,
-      verifierFtId: fsa.verifierFtId,
+      verifierDmId: fsa.verifierDmId ?? '',
+      verifierFtId: fsa.verifierFtId ?? '',
     },
     // Dokumen yang sudah ada di server tidak bisa di-read ulang sebagai dataUrl.
     // Kita mulai dengan slot kosong; user bisa upload ulang jika perlu.
@@ -64,14 +64,17 @@ function buildFormFromFsa(fsa) {
   }
 }
 
-export default function FsaEditPage({ reference, user, onCancel, onSaved }) {
+export default function FsaEditPage({ reference, user, onCancel, onSaved, onSubmitted }) {
   const { id } = useParams()
   const [fsa, setFsa] = useState(null)
   const [form, setForm] = useState(null)
   const [errors, setErrors] = useState({})
   const [submitError, setSubmitError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [draftBusy, setDraftBusy] = useState(false)
   const [stepIndex, setStepIndex] = useState(0)
+
+  const isDraft = fsa?.approvalStatus === 'draft'
 
   useEffect(() => {
     let active = true
@@ -97,7 +100,7 @@ export default function FsaEditPage({ reference, user, onCancel, onSaved }) {
     if (general.ppapLevel) filled += 1
     if (general.partNumber) filled += 1
     if (general.materialDescription) filled += 1
-    if (general.drawingRevision !== '') filled += 1
+    if (general.drawingRevision !== '' && general.drawingRevision !== null && general.drawingRevision !== undefined) filled += 1
     if (general.supplierId) filled += 1
     if (general.categoryId) filled += 1
     if (general.reasonId) filled += 1
@@ -133,13 +136,16 @@ export default function FsaEditPage({ reference, user, onCancel, onSaved }) {
   }
 
   function goNext() {
-    const current = STEPS[stepIndex]
-    const stepErrorMap = stepErrors(current.id)
-    if (Object.keys(stepErrorMap).length > 0) {
-      setErrors((prev) => ({ ...prev, ...stepErrorMap }))
-      setSubmitError(`Periksa kembali data pada ${current.label} yang ditandai merah.`)
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-      return
+    // Selama draft: pindah section bebas, validasi hanya saat Submit for Approval.
+    if (!isDraft) {
+      const current = STEPS[stepIndex]
+      const stepErrorMap = stepErrors(current.id)
+      if (Object.keys(stepErrorMap).length > 0) {
+        setErrors((prev) => ({ ...prev, ...stepErrorMap }))
+        setSubmitError(`Periksa kembali data pada ${current.label} yang ditandai merah.`)
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+        return
+      }
     }
     setSubmitError('')
     setStepIndex((index) => Math.min(index + 1, STEPS.length - 1))
@@ -154,6 +160,13 @@ export default function FsaEditPage({ reference, user, onCancel, onSaved }) {
 
   function goToStep(index) {
     if (index === stepIndex) return
+    // Selama draft: pindah section bebas.
+    if (isDraft) {
+      setSubmitError('')
+      setStepIndex(index)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
     if (index < stepIndex) {
       setSubmitError('')
       setStepIndex(index)
@@ -177,6 +190,44 @@ export default function FsaEditPage({ reference, user, onCancel, onSaved }) {
 
   async function handleSubmit(event) {
     event.preventDefault()
+
+    // Selama draft: submit = validasi penuh lalu submit for approval.
+    if (isDraft) {
+      const validationErrors = validateForm(form, reference.users)
+      setErrors(validationErrors)
+      setSubmitError('')
+
+      if (Object.keys(validationErrors).length > 0) {
+        let stepIdx = 0
+        for (let i = 0; i < STEPS.length; i += 1) {
+          if (Object.keys(validationErrors).some((key) => isStepError(key, STEPS[i].id))) {
+            stepIdx = i
+            break
+          }
+        }
+        setStepIndex(stepIdx)
+        setSubmitError(`Periksa kembali data pada ${STEPS[stepIdx].label} yang ditandai merah.`)
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+        return
+      }
+
+      setBusy(true)
+      try {
+        const result = await api.submitDraft(id, {
+          general: form.general,
+          documents: serializeDocuments(form.documents),
+          approvals: form.approvals,
+        })
+        if (onSubmitted) onSubmitted(result.fsa)
+        else onSaved(result.fsa)
+      } catch (error) {
+        setSubmitError(error.message)
+        if (error.errors) setErrors(error.errors)
+      } finally {
+        setBusy(false)
+      }
+      return
+    }
 
     // Untuk validasi: dokumen existing tetap dianggap ada
     const validationErrors = validateForm(form, reference.users)
@@ -209,19 +260,39 @@ export default function FsaEditPage({ reference, user, onCancel, onSaved }) {
     }
   }
 
+  async function handleSaveDraft() {
+    setSubmitError('')
+    setDraftBusy(true)
+    try {
+      const result = await api.saveDraftUpdate(id, {
+        general: form.general,
+        documents: serializeDocuments(form.documents),
+        approvals: form.approvals,
+      })
+      setFsa(result.fsa)
+      onSaved(result.fsa)
+    } catch (error) {
+      setSubmitError(error.message)
+    } finally {
+      setDraftBusy(false)
+    }
+  }
+
   return (
     <form onSubmit={handleSubmit} className="mx-auto max-w-[1600px] space-y-6">
-      <header className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      <header className={`flex flex-col gap-3 rounded-2xl border px-5 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between ${isDraft ? 'border-slate-300 bg-slate-100' : 'border-amber-200 bg-amber-50'}`}>
         <div>
           <div className="mb-1 flex items-center gap-2">
-            <span className="rounded-full bg-amber-200 px-2 py-0.5 text-xs font-semibold text-amber-800">
-              Rework Required
+            <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${isDraft ? 'bg-slate-300 text-slate-700' : 'bg-amber-200 text-amber-800'}`}>
+              {isDraft ? 'Draft' : 'Rework Required'}
             </span>
           </div>
-          <h1 className="text-xl font-semibold text-slate-900">Edit FSA – {form.general.fsaNumber}</h1>
-          <p className="text-sm text-slate-500">
-            Perbarui data FSA. Setelah disimpan, semua approval akan di-reset ke Waiting Approval SPR.
-          </p>
+          <h1 className="text-xl font-semibold text-slate-900">{isDraft ? 'Edit Draft' : 'Edit FSA'} – {form.general.fsaNumber}</h1>
+          {!isDraft ? (
+            <p className="text-sm text-slate-500">
+              Perbarui data FSA. Setelah disimpan, semua approval akan di-reset ke Waiting Approval SPR.
+            </p>
+          ) : null}
         </div>
         <div className="flex items-center gap-4">
           <div className="text-right">
@@ -303,8 +374,8 @@ export default function FsaEditPage({ reference, user, onCancel, onSaved }) {
           Dibuat oleh <span className="font-semibold text-slate-700">{user.name}</span> –{' '}
           {formatCreated(form.general.createdAt)}
         </p>
-        <div className="flex gap-3">
-          <Button type="button" variant="secondary" onClick={onCancel}>
+        <div className="flex flex-wrap gap-3">
+          <Button type="button" variant="secondary" onClick={() => onCancel(id, fsa)}>
             Batal
           </Button>
           {stepIndex > 0 ? (
@@ -312,9 +383,14 @@ export default function FsaEditPage({ reference, user, onCancel, onSaved }) {
               Kembali
             </Button>
           ) : null}
+          {isDraft ? (
+            <Button type="button" variant="secondary" disabled={draftBusy || busy} onClick={handleSaveDraft}>
+              {draftBusy ? 'Menyimpan...' : 'Save Draft'}
+            </Button>
+          ) : null}
           {isLastStep ? (
-            <Button type="submit" disabled={busy}>
-              {busy ? 'Menyimpan...' : 'Simpan & Resubmit FSA'}
+            <Button type="submit" disabled={busy || draftBusy}>
+              {busy ? 'Menyimpan...' : isDraft ? 'Submit for Approval' : 'Simpan & Resubmit FSA'}
             </Button>
           ) : (
             <Button type="button" onClick={goNext}>
