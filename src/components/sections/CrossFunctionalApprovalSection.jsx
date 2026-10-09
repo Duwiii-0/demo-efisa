@@ -8,7 +8,6 @@ const STEP_LABELS = {
   electrical: 'Electrical Engineering Approval',
   mechanical: 'Mechanical Engineering Approval',
   quality: 'QM Approval',
-  production: 'Production Approval',
 }
 
 function ApprovalStepper({ approvals, createdAt, actionableKeys, busyKey, remarks, setRemarks, onDecide, userName, canAct }) {

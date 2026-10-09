@@ -55,22 +55,31 @@ function initialState() {
 }
 
 // Perbaikan berurut: reset tahap yang meloncat ke pending + sinkronkan approvalStatus.
-// Contoh yang diperbaiki: production approved padahal engineering belum -> production di-reset.
+// Contoh yang diperbaiki: quality approved padahal engineering belum -> quality di-reset.
 function deriveSequentialStatus(approvals) {
   const d = (key) => approvals?.[key]?.decision ?? 'pending'
-  const keys = ['procurement', 'electrical', 'mechanical', 'quality', 'production']
+  const keys = ['procurement', 'electrical', 'mechanical', 'quality']
   if (keys.every((key) => d(key) === 'approved')) return 'accepted'
   if (keys.some((key) => d(key) === 'rejected' || d(key) === 'rework')) return 'rework_required'
   if (d('procurement') !== 'approved') return 'waiting_approval_spr'
   if (d('electrical') !== 'approved' || d('mechanical') !== 'approved') return 'waiting_approval_engineering'
   if (d('quality') !== 'approved') return 'waiting_approval_quality'
-  if (d('production') !== 'approved') return 'waiting_approval_production'
-  return 'waiting_approval_spr'
+  return 'waiting_approval_engineering'
 }
 
 function repairFsaInPlace(fsa) {
   const changes = []
   if (!fsa.approvals) return changes
+  // Migrasi: hapus sisa approval production dari data lama.
+  if (fsa.approvals.production !== undefined) {
+    delete fsa.approvals.production
+    changes.push('production: dihapus (tahap dihilangkan)')
+  }
+  // Migrasi: status lama waiting_approval_production -> accepted (Quality sudah approved).
+  if (fsa.approvalStatus === 'waiting_approval_production') {
+    changes.push('status: waiting_approval_production -> accepted')
+    fsa.approvalStatus = 'accepted'
+  }
   // Draft belum masuk alur approval: jangan di-repair / sinkronkan statusnya.
   if (fsa.approvalStatus === 'draft') return changes
 
@@ -84,13 +93,11 @@ function repairFsaInPlace(fsa) {
 
   const d = (key) => fsa.approvals?.[key]?.decision ?? 'pending'
   if (d('procurement') !== 'approved') {
-    for (const key of ['electrical', 'mechanical', 'quality', 'production']) {
+    for (const key of ['electrical', 'mechanical', 'quality']) {
       reset(key, 'SPR belum approved')
     }
   } else if (d('electrical') !== 'approved' || d('mechanical') !== 'approved') {
-    for (const key of ['quality', 'production']) reset(key, 'Engineering belum lengkap')
-  } else if (d('quality') !== 'approved') {
-    reset('production', 'Quality belum approved')
+    reset('quality', 'Engineering belum lengkap')
   }
 
   if (fsa.approvalStatus !== 'canceled') {
@@ -181,6 +188,12 @@ function load() {
         fsa.submittedAt = fsa.createdAt
         dirty = true
       }
+    }
+    // Migrasi: hapus user role production yang tersisa dari data lama.
+    if (Array.isArray(parsed.users)) {
+      const before = parsed.users.length
+      parsed.users = parsed.users.filter((u) => u.role !== 'production' && u.id !== 'usr-role-prd')
+      if (parsed.users.length !== before) dirty = true
     }
     for (const fsa of parsed.fsas ?? []) {
       if (repairFsaInPlace(fsa).length > 0) dirty = true

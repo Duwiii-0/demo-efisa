@@ -117,11 +117,9 @@ export function validateForm(form, users) {
   }
 
   if (!isApprovedOrSkipped('procurement')) {
-    markSkipped(['electrical', 'mechanical', 'quality', 'production'], 'SPR')
+    markSkipped(['electrical', 'mechanical', 'quality'], 'SPR')
   } else if (!isApprovedOrSkipped('electrical') || !isApprovedOrSkipped('mechanical')) {
-    markSkipped(['quality', 'production'], 'Engineering (yang dipilih)')
-  } else if (!isApprovedOrSkipped('quality')) {
-    markSkipped(['production'], 'Quality')
+    markSkipped(['quality'], 'Engineering (yang dipilih)')
   }
 
   return errors
@@ -132,7 +130,6 @@ const APPROVAL_ROLE = {
   quality: 'quality_management',
   electrical: 'electrical_engineer',
   mechanical: 'mechanical_engineer',
-  production: 'production',
 }
 
 export function isImage(file) {

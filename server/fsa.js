@@ -36,15 +36,13 @@ export class ValidationError extends Error {
 // 0. procurement (SPR) -> waiting_approval_spr
 // 1. engineering (electrical + mechanical, keduanya harus approved) -> waiting_approval_engineering
 // 2. quality -> waiting_approval_quality
-// 3. production -> waiting_approval_production
-// 4. semua approved -> accepted
-export const APPROVAL_SEQUENCE = ['procurement', 'electrical', 'mechanical', 'quality', 'production']
+// 3. semua approved -> accepted
+export const APPROVAL_SEQUENCE = ['procurement', 'electrical', 'mechanical', 'quality']
 
 const STAGE_LABEL = {
   procurement: 'SPR',
   engineering: 'Engineering',
   quality: 'Quality',
-  production: 'Production',
 }
 
 export function getActiveStage(approvals) {
@@ -56,7 +54,6 @@ export function getActiveStage(approvals) {
   if (!isOk('procurement')) return 'procurement'
   if (!isOk('electrical') || !isOk('mechanical')) return 'engineering'
   if (!isOk('quality')) return 'quality'
-  if (!isOk('production')) return 'production'
   return 'done'
 }
 
@@ -64,12 +61,11 @@ function requiredStageForKey(fnKey) {
   if (fnKey === 'procurement') return 'procurement'
   if (fnKey === 'electrical' || fnKey === 'mechanical') return 'engineering'
   if (fnKey === 'quality') return 'quality'
-  if (fnKey === 'production') return 'production'
   return null
 }
 
 function stageRank(stage) {
-  return ['procurement', 'engineering', 'quality', 'production', 'done'].indexOf(stage)
+  return ['procurement', 'engineering', 'quality', 'done'].indexOf(stage)
 }
 
 export function assertSequentialGate(approvals, fnKey, decision) {
@@ -105,7 +101,7 @@ export function assertSequentialGate(approvals, fnKey, decision) {
   }
 }
 
-// Perbaiki approvals yang meloncat (mis. production approved padahal engineering belum).
+// Perbaiki approvals yang meloncat (mis. quality approved padahal engineering belum).
 // Tahap yang meloncat di-reset ke pending. Return { fixed, fixedKeys }.
 export function repairSequentialApprovals(approvals) {
   const fixed = {
@@ -113,7 +109,6 @@ export function repairSequentialApprovals(approvals) {
     electrical: { ...approvals.electrical },
     mechanical: { ...approvals.mechanical },
     quality: { ...approvals.quality },
-    production: { ...approvals.production },
   }
   const fixedKeys = []
 
@@ -132,13 +127,10 @@ export function repairSequentialApprovals(approvals) {
 
   if (!isOk('procurement')) {
     // SPR belum approved -> semua tahap sesudahnya harus pending
-    for (const key of ['electrical', 'mechanical', 'quality', 'production']) reset(key)
+    for (const key of ['electrical', 'mechanical', 'quality']) reset(key)
   } else if (!isOk('electrical') || !isOk('mechanical')) {
-    // Engineering belum lengkap -> quality & production harus pending
-    for (const key of ['quality', 'production']) reset(key)
-  } else if (!isOk('quality')) {
-    // Quality belum approved -> production harus pending
-    reset('production')
+    // Engineering belum lengkap -> quality harus pending
+    reset('quality')
   }
 
   return { fixed, fixedKeys }
@@ -342,7 +334,6 @@ export function deriveStatus(approvals) {
   if (active === 'procurement') return 'waiting_approval_spr'
   if (active === 'engineering') return 'waiting_approval_engineering'
   if (active === 'quality') return 'waiting_approval_quality'
-  if (active === 'production') return 'waiting_approval_production'
 
   return 'waiting_approval_spr'
 }

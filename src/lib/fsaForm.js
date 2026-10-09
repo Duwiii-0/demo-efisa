@@ -1,11 +1,10 @@
-export const APPROVAL_ORDER = ['procurement', 'electrical', 'mechanical', 'quality', 'production']
+export const APPROVAL_ORDER = ['procurement', 'electrical', 'mechanical', 'quality']
 
 export const APPROVAL_META = {
   procurement: { label: 'Procurement Decision (SPR)', role: 'procurement' },
   quality: { label: 'Quality Decision (QM)', role: 'quality_management' },
   electrical: { label: 'Electrical Engineering Decision', role: 'electrical_engineer' },
   mechanical: { label: 'Mechanical Engineering Decision', role: 'mechanical_engineer' },
-  production: { label: 'Production Decision', role: 'production' },
 }
 
 export const DECISION_OPTIONS = [
@@ -30,7 +29,6 @@ export function getActiveStage(approvals) {
   if (!isOk('procurement')) return 'procurement'
   if (!isOk('electrical') || !isOk('mechanical')) return 'engineering'
   if (!isOk('quality')) return 'quality'
-  if (!isOk('production')) return 'production'
   return 'done'
 }
 
@@ -45,7 +43,6 @@ export function deriveStatus(approvals) {
   if (active === 'procurement') return 'waiting_approval_spr'
   if (active === 'engineering') return 'waiting_approval_engineering'
   if (active === 'quality') return 'waiting_approval_quality'
-  if (active === 'production') return 'waiting_approval_production'
 
   return 'waiting_approval_spr'
 }
@@ -65,7 +62,6 @@ export function actionableKeys(approvals) {
     procurement: ['procurement'],
     engineering: ['electrical', 'mechanical'],
     quality: ['quality'],
-    production: ['production'],
     done: [],
   }
   return (map[stage] ?? [])
@@ -93,15 +89,13 @@ export function findSkippedApprovals(approvals) {
   const isActive = (key) => approvals?.[key]?.approverId && d(key) !== 'pending'
 
   if (!isOk('procurement')) {
-    for (const key of ['electrical', 'mechanical', 'quality', 'production']) {
+    for (const key of ['electrical', 'mechanical', 'quality']) {
       if (isActive(key)) skipped.push(key)
     }
   } else if (!isOk('electrical') || !isOk('mechanical')) {
-    for (const key of ['quality', 'production']) {
+    for (const key of ['quality']) {
       if (isActive(key)) skipped.push(key)
     }
-  } else if (!isOk('quality')) {
-    if (isActive('production')) skipped.push('production')
   }
 
   return skipped

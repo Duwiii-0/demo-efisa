@@ -7,7 +7,6 @@ export const ROLES = [
   { id: 'electrical_engineer', name: 'Electrical Engineer', shortName: 'EEE' },
   { id: 'mechanical_engineer', name: 'Mechanical Engineer', shortName: 'MEE' },
   { id: 'quality_management', name: 'Quality Management', shortName: 'QM' },
-  { id: 'production', name: 'Production', shortName: 'PRD' },
 ]
 
 // Akun login per role (email persis role@siemens.com) + akun personal (email berbasis nama)
@@ -16,7 +15,6 @@ const users = [
   { id: 'usr-role-eee', name: 'Electrical Engineer', role: 'electrical_engineer', jobTitle: 'Electrical Engineer', email: 'electrical_engineer@siemens.com' },
   { id: 'usr-role-mee', name: 'Mechanical Engineer', role: 'mechanical_engineer', jobTitle: 'Mechanical Engineer', email: 'mechanical_engineer@siemens.com' },
   { id: 'usr-role-qm', name: 'Quality Management', role: 'quality_management', jobTitle: 'Quality Management', email: 'quality_management@siemens.com' },
-  { id: 'usr-role-prd', name: 'Production', role: 'production', jobTitle: 'Production Supervisor', email: 'production@siemens.com' },
 ]
 
 function personalEmail(name) {
@@ -38,7 +36,6 @@ export const FSA_STATUSES = [
   { id: 'waiting_approval_spr', name: 'Waiting Approval SPR' },
   { id: 'waiting_approval_engineering', name: 'Waiting Approval Engineering' },
   { id: 'waiting_approval_quality', name: 'Waiting Approval Quality' },
-  { id: 'waiting_approval_production', name: 'Waiting Approval Production' },
   { id: 'accepted', name: 'Approved' },
   { id: 'canceled', name: 'Rejected' },
   { id: 'rework_required', name: 'Rework Required' },
@@ -79,13 +76,12 @@ export const APPROVAL_DECISIONS = [
   { id: 'rejected', name: 'Rejected' },
 ]
 
-// Urutan baku (tidak boleh dilompat): SPR -> Engineering -> Quality -> Production
+// Urutan baku (tidak boleh dilompat): SPR -> Engineering -> Quality
 export const APPROVAL_FUNCTIONS = [
   { key: 'procurement', label: 'Procurement Decision (SPR)', role: 'procurement' },
   { key: 'electrical', label: 'Electrical Engineering Decision', role: 'electrical_engineer' },
   { key: 'mechanical', label: 'Mechanical Engineering Decision', role: 'mechanical_engineer' },
   { key: 'quality', label: 'Quality Decision (QM)', role: 'quality_management' },
-  { key: 'production', label: 'Production Decision', role: 'production' },
 ]
 
 export const SUPPLIERS = [
@@ -172,14 +168,13 @@ function sampleFsa(overrides) {
       electrical: pendingApproval('usr-role-eee'),
       mechanical: pendingApproval('usr-role-mee'),
       quality: pendingApproval('usr-role-qm'),
-      production: pendingApproval('usr-role-prd'),
     },
     ...overrides,
   }
 }
 
 // 1 case untuk setiap status, semuanya berurut (tidak meloncat):
-// SPR -> Engineering (electrical+mechanical) -> Quality -> Production -> Accepted
+// SPR -> Engineering (electrical+mechanical) -> Quality -> Accepted
 export const SAMPLE_FSAS = [
   {
     // 1. Waiting Approval SPR: semua masih pending
@@ -209,8 +204,7 @@ export const SAMPLE_FSAS = [
         electrical: pendingApproval('usr-role-eee'),
         mechanical: pendingApproval('usr-role-mee'),
         quality: pendingApproval('usr-role-qm'),
-        production: pendingApproval('usr-role-prd'),
-      },
+         },
     }),
   },
   {
@@ -234,32 +228,31 @@ export const SAMPLE_FSAS = [
         electrical: approvedApproval('usr-role-eee', '2026-03-12T02:30:00.000Z', 'Spesifikasi kelistrikan oke.'),
         mechanical: approvedApproval('usr-role-mee', '2026-03-12T03:10:00.000Z', 'Dimensi sesuai drawing.'),
         quality: pendingApproval('usr-role-qm'),
-        production: pendingApproval('usr-role-prd'),
-      },
+         },
     }),
   },
   {
-    // 4. Waiting Approval Production: SPR + Engineering + Quality approved
+    // 4. Accepted: SPR + Engineering + Quality approved (tahap Production dihapus)
     createdAt: '2026-03-20T06:45:00.000Z',
     createdById: 'usr-role-spr',
     ...sampleFsa({
       fsaNumber: 'FSA-20260320-01',
       ppapLevel: 4,
       partNumber: 'PART02774311',
-      materialDescription: 'Cable harness shield rev B, menunggu trial production',
+      materialDescription: 'Cable harness shield rev B, lolos semua tahap',
       drawingRevision: 3,
       supplierId: 'sup-02',
       categoryId: 'connectors_cable_assemblies',
       reasonId: 'drawing_revision',
       dateOfSampleSubmission: '2026-03-20',
       sampleQuantity: 3,
-      approvalStatus: 'waiting_approval_production',
+      approvalStatus: 'accepted',
+      completedAt: '2026-03-23T04:00:00.000Z',
       approvals: {
         procurement: approvedApproval('usr-role-spr', '2026-03-21T01:20:00.000Z', 'PO revisi sudah terbit.'),
         electrical: approvedApproval('usr-role-eee', '2026-03-22T02:30:00.000Z', 'Kelistrikan oke.'),
         mechanical: approvedApproval('usr-role-mee', '2026-03-22T03:10:00.000Z', 'Mekanik oke.'),
         quality: approvedApproval('usr-role-qm', '2026-03-23T04:00:00.000Z', 'Dokumen mutu lengkap.'),
-        production: pendingApproval('usr-role-prd'),
       },
     }),
   },
@@ -277,13 +270,12 @@ export const SAMPLE_FSAS = [
       reasonId: 'new_material',
       dateOfSampleSubmission: '2026-04-01',
       approvalStatus: 'accepted',
-      completedAt: '2026-04-05T05:00:00.000Z',
+      completedAt: '2026-04-04T04:00:00.000Z',
       approvals: {
         procurement: approvedApproval('usr-role-spr', '2026-04-02T01:20:00.000Z', 'SPR oke.'),
         electrical: approvedApproval('usr-role-eee', '2026-04-03T02:30:00.000Z', 'Elektrik oke.'),
         mechanical: approvedApproval('usr-role-mee', '2026-04-03T03:10:00.000Z', 'Mekanik oke.'),
         quality: approvedApproval('usr-role-qm', '2026-04-04T04:00:00.000Z', 'Mutu oke.'),
-        production: approvedApproval('usr-role-prd', '2026-04-05T05:00:00.000Z', 'Trial production oke.'),
       },
     }),
   },
@@ -306,8 +298,7 @@ export const SAMPLE_FSAS = [
         electrical: rejectedApproval('usr-role-eee', '2026-04-12T02:30:00.000Z', 'Tegangan tembus di bawah spek, rework.'),
         mechanical: pendingApproval('usr-role-mee'),
         quality: pendingApproval('usr-role-qm'),
-        production: pendingApproval('usr-role-prd'),
-      },
+         },
     }),
   },
   {
@@ -331,8 +322,7 @@ export const SAMPLE_FSAS = [
         electrical: pendingApproval('usr-role-eee'),
         mechanical: pendingApproval('usr-role-mee'),
         quality: pendingApproval('usr-role-qm'),
-        production: pendingApproval('usr-role-prd'),
-      },
+         },
     }),
   },
 ]
