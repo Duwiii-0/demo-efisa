@@ -251,7 +251,7 @@ export default function FsaDetailPage({ reference, onBack, onEdit }) {
       <SectionCard step="2" title="FSA Documents">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div>
-            <p className="mb-2 text-sm font-medium text-slate-700">Product Photo ({fsa.documents.productPhoto ? 1 : 0} file)</p>
+            <p className="mb-2 text-sm font-medium text-slate-700">Product Photo</p>
             {fsa.documents.productPhoto ? (
               <ProductPhotoPreview file={fsa.documents.productPhoto} onDownload={handleDownload} />
             ) : (
@@ -265,7 +265,7 @@ export default function FsaDetailPage({ reference, onBack, onEdit }) {
             const files = fsa.documents[field.key] ?? []
             return (
               <div key={field.key}>
-                <p className="mb-2 text-sm font-medium text-slate-700">{field.label} ({files.length} file)</p>
+                <p className="mb-2 text-sm font-medium text-slate-700">{field.label}</p>
                 {files.length ? (
                   <div className="space-y-2">
                     {files.map((file, index) => {
