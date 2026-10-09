@@ -6,7 +6,7 @@ import GeneralInformationSection from './sections/GeneralInformationSection.jsx'
 import PpapDocumentsSection from './sections/PpapDocumentsSection.jsx'
 import DocumentReviewChecklistSection from './sections/DocumentReviewChecklistSection.jsx'
 import CrossFunctionalApprovalSection from './sections/CrossFunctionalApprovalSection.jsx'
-import { APPROVAL_ORDER } from '../lib/fsaForm.js'
+import { APPROVAL_ORDER, SAMPLE_QUANTITY_VALUES } from '../lib/fsaForm.js'
 import { validateForm } from '../lib/validation.js'
 import { STEPS, isStepError } from './FsaCreatePage.jsx'
 import { toLocalInputValue } from '../lib/format.js'
@@ -31,7 +31,7 @@ function buildFormFromFsa(fsa) {
       reasonId: fsa.reasonId,
       reasonOther: fsa.reasonOther ?? '',
       dateOfSampleSubmission: fsa.dateOfSampleSubmission,
-      sampleQuantity: fsa.sampleQuantity ?? 0,
+      sampleQuantity: SAMPLE_QUANTITY_VALUES.includes(Number(fsa.sampleQuantity)) ? Number(fsa.sampleQuantity) : '',
       createdAt: fsa.createdAt,
       verifierDmId: fsa.verifierDmId,
       verifierFtId: fsa.verifierFtId,

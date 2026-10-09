@@ -127,6 +127,19 @@ export const CHECKLIST_LEVEL3_ITEMS = [
   { key: 'appearanceApprovalReport', label: 'Appearance Approval Report' },
 ]
 
+export const SAMPLE_QUANTITY_OPTIONS = [
+  { value: 0, label: 'No Sample' },
+  { value: 3, label: '3 UoM' },
+  { value: 10, label: '10 UoM' },
+]
+
+export const SAMPLE_QUANTITY_VALUES = SAMPLE_QUANTITY_OPTIONS.map((opt) => opt.value)
+
+export function sampleQuantityLabel(value) {
+  const found = SAMPLE_QUANTITY_OPTIONS.find((opt) => Number(opt.value) === Number(value))
+  return found ? found.label : String(value ?? '')
+}
+
 export const emptyFsaForm = () => ({
   general: {
     fsaNumber: '',
@@ -141,7 +154,7 @@ export const emptyFsaForm = () => ({
     reasonId: '',
     reasonOther: '',
     dateOfSampleSubmission: '',
-    sampleQuantity: 0,
+    sampleQuantity: '',
     createdAt: '',
     verifierDmId: '',
     verifierFtId: '',

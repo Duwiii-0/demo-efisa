@@ -43,8 +43,8 @@ export function validateForm(form, users) {
   if (!general.dateOfSampleSubmission) {
     errors.dateOfSampleSubmission = 'Date of sample submission wajib diisi'
   }
-  if (general.sampleQuantity === '' || general.sampleQuantity === null || general.sampleQuantity === undefined || Number(general.sampleQuantity) < 0) {
-    errors.sampleQuantity = 'Sample quantity wajib diisi, mulai dari 0'
+  if (general.sampleQuantity === '' || general.sampleQuantity === null || general.sampleQuantity === undefined || ![0, 3, 10].includes(Number(general.sampleQuantity))) {
+    errors.sampleQuantity = 'Sample quantity wajib dipilih (No Sample / 3 UoM / 10 UoM)'
   }
   if (!general.verifierDmId) {
     errors.verifierDm = 'Verifikator DM wajib dipilih'
