@@ -34,6 +34,7 @@ export const USERS = users.map(({ division, email, ...user }) => {
 })
 
 export const FSA_STATUSES = [
+  { id: 'draft', name: 'Draft' },
   { id: 'waiting_approval_spr', name: 'Waiting Approval SPR' },
   { id: 'waiting_approval_engineering', name: 'Waiting Approval Engineering' },
   { id: 'waiting_approval_quality', name: 'Waiting Approval Quality' },

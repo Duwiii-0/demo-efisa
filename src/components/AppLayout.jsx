@@ -8,6 +8,7 @@ const NAV_GROUPS = [
     items: [
       { to: '/data-fsa', label: 'Data FSA', icon: 'list' },
       { to: '/', label: 'FSA Assigned to You', end: true, icon: 'inbox' },
+      { to: '/drafts', label: 'FSA Draft', icon: 'draft', procurementOnly: true },
     ],
   },
 ]
@@ -15,6 +16,7 @@ const NAV_GROUPS = [
 
 function Icon({ name }) {
   const paths = {
+    draft: 'M6 3h9l4 4v14H6zM9 3v5h5M9 13h6M9 17h6',
     inbox: 'M3 13l2-8h14l2 8v5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-5zm0 0h5l1 2h2l1-2h5',
     list: 'M4 6h16M4 12h16M4 18h16',
     clock: 'M12 7v5l3 2M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z',
@@ -88,7 +90,9 @@ export default function AppLayout({ user, reference, onLogout, children }) {
             <div key={group.title}>
               <p className="px-2 pb-1.5 text-xs font-medium text-slate-400">{group.title}</p>
               <div className="space-y-0.5">
-                {group.items.map((item) => (
+                {group.items
+                  .filter((item) => !item.procurementOnly || user.role === 'procurement')
+                  .map((item) => (
                   <NavLink
                     key={item.to}
                     to={item.to}

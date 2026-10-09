@@ -44,6 +44,8 @@ function initialState() {
     fsas: SAMPLE_FSAS.map((fsa) => ({
       id: randomUUID(),
       ...fsa,
+      // FSA non-draft dianggap sudah ter-submit saat dibuat.
+      submittedAt: fsa.approvalStatus === 'draft' ? null : (fsa.submittedAt ?? fsa.createdAt),
       createdById: fsa.createdById,
       history: [
         { at: fsa.createdAt, byId: fsa.createdById, action: 'created', note: 'FSA dibuat' },
@@ -69,6 +71,8 @@ function deriveSequentialStatus(approvals) {
 function repairFsaInPlace(fsa) {
   const changes = []
   if (!fsa.approvals) return changes
+  // Draft belum masuk alur approval: jangan di-repair / sinkronkan statusnya.
+  if (fsa.approvalStatus === 'draft') return changes
 
   const reset = (key, reason) => {
     if (fsa.approvals[key]?.decision !== 'pending') {
@@ -168,6 +172,13 @@ function load() {
       if (fsa.documents && fsa.documents.appearance !== undefined && fsa.documents.productPhoto === undefined) {
         fsa.documents.productPhoto = fsa.documents.appearance
         delete fsa.documents.appearance
+        dirty = true
+      }
+    }
+    // Migrasi: submitted_at untuk FSA non-draft yang belum punya (dianggap ter-submit saat dibuat).
+    for (const fsa of parsed.fsas ?? []) {
+      if (fsa.approvalStatus !== 'draft' && !fsa.submittedAt) {
+        fsa.submittedAt = fsa.createdAt
         dirty = true
       }
     }

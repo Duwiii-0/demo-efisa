@@ -177,6 +177,11 @@ export default function FsaDetailPage({ reference, onBack, onEdit }) {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          {onEdit && fsa.approvalStatus === 'draft' && reference.me?.role === 'procurement' ? (
+            <Button variant="secondary" onClick={() => onEdit(fsa)}>
+              Edit Draft
+            </Button>
+          ) : null}
           {onEdit && fsa.approvalStatus === 'rework_required' && (fsa.approvals?.procurement?.approverId ? fsa.approvals?.procurement?.approverId === reference.me?.id : reference.me?.role === 'procurement') ? (
             <Button variant="warning" onClick={() => onEdit(fsa)}>
               Edit untuk Rework
@@ -235,6 +240,7 @@ export default function FsaDetailPage({ reference, onBack, onEdit }) {
             dateOfSampleSubmission: fsa.dateOfSampleSubmission,
             sampleQuantity: fsa.sampleQuantity,
             createdAt: fsa.createdAt,
+            submittedAt: fsa.submittedAt,
             completedAt: fsa.completedAt,
             verifierDmId: fsa.verifierDmId,
             verifierFtId: fsa.verifierFtId,

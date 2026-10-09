@@ -1,4 +1,5 @@
 export const STATUS_STYLES = {
+  draft: 'bg-slate-300/40 text-slate-700',
   waiting_approval_production: 'bg-[#AA32BE]/25 text-[#7D1B87]',
   waiting_approval_engineering: 'bg-[#EC6602]/25 text-[#A84600]',
   waiting_approval_quality: 'bg-[#0087BE]/25 text-[#005E85]',

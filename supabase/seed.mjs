@@ -53,6 +53,7 @@ function toFsaRow(fsa, createdById) {
     date_of_sample_submission: fsa.dateOfSampleSubmission,
     sample_quantity: fsa.sampleQuantity ?? 0,
     created_at: fsa.createdAt ?? new Date().toISOString(),
+    submitted_at: fsa.approvalStatus === 'draft' ? null : (fsa.submittedAt ?? fsa.createdAt ?? new Date().toISOString()),
     approval_status: fsa.approvalStatus,
     completed_at: fsa.completedAt ?? null,
     verifier_dm_id: fsa.verifierDmId,

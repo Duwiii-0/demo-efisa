@@ -315,6 +315,12 @@ export default function GeneralInformationSection({ form, errors, reference, onC
           </Field>
         ) : null}
 
+        {general.submittedAt || readOnly ? (
+          <Field label="Submitted for Approval" hint="Tercatat otomatis saat di-submit for approval">
+            <Input value={general.submittedAt ? formatDateTime(general.submittedAt) : '-'} readOnly disabled />
+          </Field>
+        ) : null}
+
         {general.completedAt || readOnly ? (
           <Field label="Date of Completion" hint="Tercatat otomatis saat semua fungsi selesai approved">
             <Input value={general.completedAt ? formatDateTime(general.completedAt) : '-'} readOnly disabled />

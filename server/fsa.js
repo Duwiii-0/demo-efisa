@@ -11,7 +11,6 @@ import {
   buildNextNumber as buildNextNumberStore,
   getFsaById,
   insertFsa as insertFsaRow,
-  lookupMaterial,
   saveFsa as saveFsaRow,
   upsertCustomMaterial,
   userExistsById,
@@ -348,35 +347,6 @@ export function deriveStatus(approvals) {
   return 'waiting_approval_spr'
 }
 
-// Part non-master otomatis tercatat ke custom_materials (tetap kuning).
-// desc sejajar by koma bila jumlahnya sama, selain itu pakai desc penuh.
-function splitDescriptions(materialDescription, count) {
-  const chunks = String(materialDescription ?? '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean)
-  if (chunks.length === count) return chunks
-  return Array.from({ length: count }, (_, i) => chunks[i] ?? chunks[0] ?? String(materialDescription ?? '').trim())
-}
-
-async function registerCustomMaterials(partNumbers, materialDescription, fsaId, actorId) {
-  const descs = splitDescriptions(materialDescription, partNumbers.length)
-  const registered = []
-  for (let i = 0; i < partNumbers.length; i += 1) {
-    const lookup = await lookupMaterial(partNumbers[i])
-    if (lookup && lookup.status !== 'master' && lookup.status !== 'custom') {
-      await upsertCustomMaterial({
-        partNumber: partNumbers[i],
-        materialDescription: descs[i] ?? '',
-        fsaId,
-        userId: actorId,
-      })
-      registered.push(partNumbers[i])
-    }
-  }
-  return registered
-}
-
 export async function updateFsa(fsaId, payload, actor) {
   const fsa = await getFsaById(fsaId)
   if (!fsa) return null
@@ -387,8 +357,41 @@ export async function updateFsa(fsaId, payload, actor) {
     throw error
   }
 
+  // Selama status draft, procurement boleh edit semua field dan save draft berkali-kali.
+  if (fsa.approvalStatus === 'draft') {
+    if (payload?.submitForApproval) {
+      return submitDraftFsa(fsaId, payload, actor)
+    }
+    const draft = coerceGeneralDraft(payload?.general ?? {})
+    const documents = payload?.documents ? coerceDocumentsDraft(payload.documents) : { ...fsa.documents }
+    const approvals = payload?.approvals ? await coerceApprovalsDraft(payload.approvals) : { ...fsa.approvals }
+    const now = new Date().toISOString()
+
+    Object.assign(fsa, {
+      ppapLevel: draft.ppapLevel,
+      partNumber: draft.partNumber,
+      materialDescription: draft.materialDescription,
+      drawingRevision: draft.drawingRevision,
+      sourcingVolume: draft.sourcingVolume,
+      supplierId: draft.supplierId,
+      supplierOther: draft.supplierOther,
+      categoryId: draft.categoryId,
+      categoryOther: draft.categoryOther,
+      reasonId: draft.reasonId,
+      reasonOther: draft.reasonOther,
+      dateOfSampleSubmission: draft.dateOfSampleSubmission,
+      sampleQuantity: draft.sampleQuantity,
+      verifierDmId: draft.verifierDmId,
+      verifierFtId: draft.verifierFtId,
+      documents,
+      approvals,
+    })
+    fsa.history.push({ at: now, byId: actor.id, action: 'draft_saved', note: 'Draft FSA disimpan' })
+    return saveFsaRow(fsa)
+  }
+
   if (fsa.approvalStatus !== 'rework_required') {
-    const error = new Error(`FSA tidak bisa diedit karena statusnya bukan Rework Required (status saat ini: ${fsa.approvalStatus})`)
+    const error = new Error(`FSA tidak bisa diedit karena statusnya bukan Draft / Rework Required (status saat ini: ${fsa.approvalStatus})`)
     error.status = 422
     throw error
   }
@@ -543,6 +546,7 @@ export async function updateFsa(fsaId, payload, actor) {
   fsa.documents = documents
   fsa.approvals = resetApprovals
   fsa.approvalStatus = 'waiting_approval_spr'
+  fsa.submittedAt = now
   fsa.completedAt = null
 
   fsa.history.push({
@@ -565,11 +569,183 @@ export async function updateFsa(fsaId, payload, actor) {
   return saveFsaRow(fsa)
 }
 
+// Draft -> Waiting Approval SPR. Validasi penuh seperti create, lalu reset approvals ke pending.
+export async function submitDraftFsa(fsaId, payload, actor) {
+  const fsa = await getFsaById(fsaId)
+  if (!fsa) return null
+
+  if (actor.role !== 'procurement') {
+    const error = new Error('Hanya Procurement yang boleh submit FSA')
+    error.status = 403
+    throw error
+  }
+  if (fsa.approvalStatus !== 'draft') {
+    const error = new Error(`Hanya draft yang bisa di-submit (status saat ini: ${fsa.approvalStatus})`)
+    error.status = 422
+    throw error
+  }
+
+  const errors = {}
+  const body = payload?.general ?? {}
+
+  if (!FSA_LEVELS.includes(Number(body.ppapLevel))) {
+    errors.ppapLevel = 'FSA level harus 1 sampai 5'
+  }
+  const partNumbers = String(body.partNumber ?? '')
+    .toUpperCase()
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean)
+  if (partNumbers.length === 0) {
+    errors.partNumber = 'Part number wajib diisi'
+  }
+  const partNumber = partNumbers.join(',')
+  const materialDescription = String(body.materialDescription ?? '').trim()
+  if (materialDescription.length < 3) {
+    errors.materialDescription = 'Material description minimal 3 karakter'
+  }
+  const drawingRevision = Number(body.drawingRevision)
+  if (!Number.isInteger(drawingRevision) || drawingRevision < 0) {
+    errors.drawingRevision = 'Drawing revision harus bilangan bulat mulai dari 0'
+  }
+  let sourcingVolume = null
+  const sourcingRaw = body.sourcingVolume
+  if (sourcingRaw !== '' && sourcingRaw !== null && sourcingRaw !== undefined) {
+    const parsed = Number(sourcingRaw)
+    if (!Number.isInteger(parsed) || parsed < 0) {
+      errors.sourcingVolume = 'Sourcing volume harus bilangan bulat mulai dari 0'
+    } else {
+      sourcingVolume = parsed
+    }
+  }
+  let supplierId = null
+  if (body.supplierId === 'other') {
+    supplierId = 'other'
+  } else {
+    supplierId = pickId(body.supplierId, SUPPLIER_IDS, 'supplierName', errors)
+  }
+  const categoryId = pickId(body.categoryId, CATEGORY_IDS, 'category', errors)
+  const reasonId = pickId(body.reasonId, REASON_IDS, 'reasonOfFsa', errors)
+  const supplierOther = String(body.supplierOther ?? '').trim().slice(0, 200)
+  if (supplierId === 'other' && supplierOther.length < 3) {
+    errors.supplierOther = 'Nama supplier lainnya wajib diisi minimal 3 karakter'
+  }
+  const categoryOther = String(body.categoryOther ?? '').trim().slice(0, 200)
+  if (categoryId === 'others' && categoryOther.length < 3) {
+    errors.categoryOther = 'Kategori lainnya wajib diisi minimal 3 karakter'
+  }
+  const reasonOther = String(body.reasonOther ?? '').trim().slice(0, 200)
+  if (reasonId === 'other' && reasonOther.length < 3) {
+    errors.reasonOther = 'Reason lainnya wajib diisi minimal 3 karakter'
+  }
+  const dateOfSampleSubmission = String(body.dateOfSampleSubmission ?? '').trim()
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateOfSampleSubmission)) {
+    errors.dateOfSampleSubmission = 'Tanggal submission tidak valid'
+  }
+  const sampleQuantity = Number(body.sampleQuantity)
+  if (!SAMPLE_QUANTITY_IDS.has(sampleQuantity)) {
+    errors.sampleQuantity = 'Sample quantity harus No Sample (0), 3 UoM, atau 10 UoM'
+  }
+  if (!(await userExists(body.verifierDmId))) {
+    errors.verifierDm = 'Verifikator DM wajib dipilih'
+  }
+  if (!(await userExists(body.verifierFtId))) {
+    errors.verifierFt = 'Verifikator FT wajib dipilih'
+  }
+
+  const approvals = await normalizeApprovals(payload?.approvals, errors)
+  const documents = normalizeDocuments(payload?.documents, errors)
+  if (!payload?.documents?.productPhoto) {
+    errors.productPhoto = 'Foto product photo wajib diunggah'
+  }
+
+  if (Object.keys(errors).length > 0) {
+    throw new ValidationError(errors)
+  }
+
+  const now = new Date().toISOString()
+  Object.assign(fsa, {
+    ppapLevel: Number(body.ppapLevel),
+    partNumber,
+    materialDescription,
+    drawingRevision,
+    sourcingVolume,
+    supplierId,
+    supplierOther: supplierId === 'other' ? supplierOther : '',
+    categoryId,
+    categoryOther: categoryId === 'others' ? categoryOther : '',
+    reasonId,
+    reasonOther: reasonId === 'other' ? reasonOther : '',
+    dateOfSampleSubmission,
+    sampleQuantity,
+    verifierDmId: body.verifierDmId,
+    verifierFtId: body.verifierFtId,
+    documents,
+    approvals,
+    approvalStatus: deriveStatus(approvals),
+    submittedAt: now,
+    completedAt: null,
+  })
+  fsa.history.push({ at: now, byId: actor.id, action: 'submitted', note: `Draft ${fsa.fsaNumber} di-submit for approval` })
+  return saveFsaRow(fsa)
+}
+
+export async function deleteDraftFsa(fsaId, actor) {
+  const fsa = await getFsaById(fsaId)
+  if (!fsa) return false
+  if (actor.role !== 'procurement') {
+    const error = new Error('Hanya Procurement yang boleh menghapus draft')
+    error.status = 403
+    throw error
+  }
+  if (fsa.approvalStatus !== 'draft') {
+    const error = new Error('Hanya draft yang bisa dihapus')
+    error.status = 422
+    throw error
+  }
+  if (isSupabaseEnabled) {
+    const { getSupabaseAdmin } = await import('./supabase.js')
+    const { error } = await getSupabaseAdmin().from('fsas').delete().eq('id', fsaId)
+    if (error) throw error
+    return true
+  }
+  const { getDb, saveDb } = await import('./db.js')
+  const db = getDb()
+  const index = db.fsas.findIndex((item) => item.id === fsaId)
+  if (index === -1) return false
+  db.fsas.splice(index, 1)
+  saveDb()
+  return true
+}
+
 export async function buildNextNumber(date = new Date()) {
   return buildNextNumberStore(date)
 }
 
 export async function createFsa(payload, actor) {
+  // Mode draft: bebas, tanpa validasi. Procurement bisa simpan kapan saja.
+  if (payload?.isDraft) {
+    const draft = coerceGeneralDraft(payload?.general ?? {})
+    const approvals = await coerceApprovalsDraft(payload?.approvals)
+    const documents = coerceDocumentsDraft(payload?.documents)
+    const fsaNumber = await buildNextNumberStore()
+    const now = new Date().toISOString()
+    const fsa = {
+      id: randomUUID(),
+      fsaNumber,
+      ...draft,
+      createdAt: now,
+      submittedAt: null,
+      approvalStatus: 'draft',
+      completedAt: null,
+      documents,
+      approvals,
+      createdById: actor.id,
+      history: [{ at: now, byId: actor.id, action: 'draft_created', note: `Draft ${fsaNumber} dibuat` }],
+    }
+    return insertFsaRow(fsa)
+  }
+
   const errors = {}
   const body = payload?.general ?? {}
 
@@ -696,6 +872,7 @@ export async function createFsa(payload, actor) {
     dateOfSampleSubmission,
     sampleQuantity,
     createdAt: now,
+    submittedAt: now,
     approvalStatus,
     completedAt: null,
     verifierDmId: body.verifierDmId,
@@ -728,6 +905,11 @@ export async function updateDecision(fsaId, fnKey, payload, actor) {
     return null
   }
 
+  if (fsa.approvalStatus === 'draft') {
+    const error = new Error('FSA masih draft, submit for approval dulu sebelum bisa di-approve')
+    error.status = 422
+    throw error
+  }
   if (fsa.approvalStatus === 'canceled') {
     const error = new Error('FSA sudah canceled, tidak bisa diubah')
     error.status = 422
