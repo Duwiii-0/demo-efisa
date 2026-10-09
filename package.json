@@ -5,10 +5,18 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently -k -n server,client -c blue,green \"node --watch server.js\" \"vite\"",
+    "dev:main": "concurrently -k -n server,client -c blue,green \"node --env-file=.env.main --watch server.js\" \"vite\"",
+    "dev:v2": "concurrently -k -n server,client -c blue,green \"node --env-file=.env.v2 --watch server.js\" \"vite\"",
     "build": "vite build",
     "start": "node server.js",
+    "start:main": "node --env-file=.env.main server.js",
+    "start:v2": "node --env-file=.env.v2 server.js",
     "db:reset": "node --input-type=module -e \"import('./server/db.js').then((m) => { m.resetDb(); console.log('Database EFISA direset ke data awal') })\"",
-    "db:seed:supabase": "node supabase/seed.mjs"
+    "db:reset:main": "node --env-file=.env.main --input-type=module -e \"import('./server/db.js').then((m) => { m.resetDb(); console.log('Database EFISA (main) direset ke data awal') })\"",
+    "db:reset:v2": "node --env-file=.env.v2 --input-type=module -e \"import('./server/db.js').then((m) => { m.resetDb(); console.log('Database EFISA (v2) direset ke data awal') })\"",
+    "db:seed:supabase": "node supabase/seed.mjs",
+    "db:seed:supabase:main": "node --env-file=.env.main supabase/seed.mjs",
+    "db:seed:supabase:v2": "node --env-file=.env.v2 supabase/seed.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.2",

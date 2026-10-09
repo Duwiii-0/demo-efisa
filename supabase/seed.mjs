@@ -1,10 +1,29 @@
-// Seed Supabase dari data demo lokal (server/seed.js).
-// Jalankan: npm run db:seed:supabase
+// Seed Supabase dari data demo lokal (server/seed.js, mengikuti branch aktif).
+// Jalankan: npm run db:seed:supabase:main  (branch main + .env.main, tanpa production)
+//           npm run db:seed:supabase:v2    (branch v2 + .env.v2, dengan production)
 // Butuh env: SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY
 import 'dotenv/config'
 import { randomUUID } from 'node:crypto'
 import { createClient } from '@supabase/supabase-js'
-import { SAMPLE_FSAS, USERS } from '../server/seed.js'
+import { APPROVAL_FUNCTIONS, SAMPLE_FSAS, USERS } from '../server/seed.js'
+
+// Pengaman varian: cegah seed data yang salah ke proyek Supabase yang salah.
+// EFISA_VARIANT wajib diisi (gunakan npm run db:seed:supabase:main / :v2).
+const seedVariant = (process.env.EFISA_VARIANT ?? '').trim().toLowerCase()
+if (seedVariant !== 'main' && seedVariant !== 'v2') {
+  console.error('BATAL: EFISA_VARIANT harus "main" atau "v2". Gunakan npm run db:seed:supabase:main / :v2.')
+  process.exit(1)
+}
+const seedFnKeys = APPROVAL_FUNCTIONS.map((f) => f.key)
+if (seedVariant === 'main' && seedFnKeys.includes('production')) {
+  console.error('BATAL: EFISA_VARIANT=main tapi seed mengandung production. Jalankan dari branch main.')
+  process.exit(1)
+}
+if (seedVariant === 'v2' && !seedFnKeys.includes('production')) {
+  console.error('BATAL: EFISA_VARIANT=v2 tapi seed tanpa production. Jalankan dari branch v2.')
+  process.exit(1)
+}
+console.log(`Seed varian: ${seedVariant} [approval: ${seedFnKeys.join(',')}]`)
 
 const url = process.env.SUPABASE_URL
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY

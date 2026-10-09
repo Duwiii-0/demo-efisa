@@ -6,8 +6,19 @@ import { SAMPLE_FSAS, USERS } from './seed.js'
 
 const rootDir = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
 const dataDir = path.join(rootDir, 'server', 'data')
-const dbFile = path.join(dataDir, 'db.json')
-const uploadsDir = path.join(rootDir, 'server', 'uploads')
+// Varian ganda: main (tanpa production) vs v2 (dengan production).
+// EFISA_VARIANT=main -> db.main.json + uploads-main
+// EFISA_VARIANT=v2   -> db.v2.json + uploads-v2
+// Kosong             -> db.json + uploads (kompatibel lama)
+// DB_FILE / UPLOADS_DIR meng-override penuh bila diisi.
+export const variant = (process.env.EFISA_VARIANT ?? '').trim().toLowerCase()
+const defaultDbName = variant === 'v2' ? 'db.v2.json' : variant === 'main' ? 'db.main.json' : 'db.json'
+const defaultUploadsName = variant === 'v2' ? 'uploads-v2' : variant === 'main' ? 'uploads-main' : 'uploads'
+const dbFile = process.env.DB_FILE ? path.resolve(process.env.DB_FILE) : path.join(dataDir, defaultDbName)
+const uploadsDir = process.env.UPLOADS_DIR
+  ? path.resolve(process.env.UPLOADS_DIR)
+  : path.join(rootDir, 'server', defaultUploadsName)
+export const dbFilePath = dbFile
 
 let state = null
 
