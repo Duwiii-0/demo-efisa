@@ -40,7 +40,7 @@ export default function GeneralInformationSection({ form, errors, reference, onC
         </Field>
 
         {general.categoryId === 'others' ? (
-          <Field label="Kategori Lainnya" required error={errors.categoryOther} hint="Ketik nama kategori sendiri">
+          <Field label="Kategori Lainnya" required error={errors.categoryOther}>
             <Input
               value={general.categoryOther ?? ''}
               onChange={set('categoryOther')}
@@ -63,7 +63,7 @@ export default function GeneralInformationSection({ form, errors, reference, onC
         </Field>
 
         {general.reasonId === 'other' ? (
-          <Field label="Reason Lainnya" required error={errors.reasonOther} hint="Ketik alasan sendiri">
+          <Field label="Reason Lainnya" required error={errors.reasonOther}>
             <Input
               value={general.reasonOther ?? ''}
               onChange={set('reasonOther')}
