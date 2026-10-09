@@ -2,7 +2,7 @@
 -- Pasangan: branch v2 + .env.v2 + npm run db:seed:supabase:v2
 -- Struktur tabel IDENTIK dengan schema.main.sql (status/approval bebas text);
 -- yang membedakan adalah SEED (server/seed.js di branch v2, dengan production).
--- Cara pakai: Supabase Dashboard (proyek KHUSUS v2) > SQL Editor > paste seluruh file ini > Run
+-- Cara pakai: Supabase Dashboard (proyek "efisa v2") > SQL Editor > paste seluruh file ini > Run
 -- Aman dijalankan ulang (idempotent).
 
 -- 1) Users (akun demo, password hash sha256 email|password ala server/security.js)
