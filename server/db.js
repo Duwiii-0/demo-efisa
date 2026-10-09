@@ -81,6 +81,8 @@ function deriveSequentialStatus(approvals) {
 function repairFsaInPlace(fsa) {
   const changes = []
   if (!fsa.approvals) return changes
+  // File milik varian lain (mis. db.v2.json dibuka kode main): jangan utak-atik.
+  if (variant === 'v2') return changes
   // Migrasi: hapus sisa approval production dari data lama.
   if (fsa.approvals.production !== undefined) {
     delete fsa.approvals.production
@@ -201,7 +203,8 @@ function load() {
       }
     }
     // Migrasi: hapus user role production yang tersisa dari data lama.
-    if (Array.isArray(parsed.users)) {
+    // Dilewati bila file milik varian v2 (dibuka kode main).
+    if (variant !== 'v2' && Array.isArray(parsed.users)) {
       const before = parsed.users.length
       parsed.users = parsed.users.filter((u) => u.role !== 'production' && u.id !== 'usr-role-prd')
       if (parsed.users.length !== before) dirty = true
