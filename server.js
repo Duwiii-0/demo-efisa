@@ -405,8 +405,11 @@ const isDirectRun =
   process.argv[1] && path.basename(process.argv[1]) === 'server.js' && !process.env.VERCEL
 
 if (isDirectRun) {
-  app.listen(port, () => {
-    console.log(`Server berjalan di http://localhost:${port} [storage=${isSupabaseEnabled ? 'supabase' : 'local'}]`)
+  app.listen(port, async () => {
+    const { variant, dbFilePath } = await import('./server/db.js')
+    console.log(
+      `Server berjalan di http://localhost:${port} [variant=${variant || 'default'}] [storage=${isSupabaseEnabled ? 'supabase' : `local:${dbFilePath}`}]`,
+    )
   })
 }
 
