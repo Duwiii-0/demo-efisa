@@ -21,6 +21,7 @@ import { MAX_FILES } from './uploads.js'
 
 
 const DECISION_IDS = new Set(['pending', 'approved', 'rejected', 'rework'])
+const SAMPLE_QUANTITY_IDS = new Set([0, 3, 10])
 const CHECKLIST_IDS = new Set(CHECKLIST_STATUSES.map((item) => item.id))
 const CATEGORY_IDS = new Set(PART_CATEGORIES.map((item) => item.id))
 const REASON_IDS = new Set(FSA_REASONS.map((item) => item.id))
@@ -386,8 +387,8 @@ export async function updateFsa(fsaId, payload, actor) {
   }
 
   const sampleQuantity = Number(body.sampleQuantity)
-  if (!Number.isInteger(sampleQuantity) || sampleQuantity < 0) {
-    errors.sampleQuantity = 'Sample quantity harus bilangan bulat mulai dari 0'
+  if (!SAMPLE_QUANTITY_IDS.has(sampleQuantity)) {
+    errors.sampleQuantity = 'Sample quantity harus No Sample (0), 3 UoM, atau 10 UoM'
   }
 
   if (!(await userExists(body.verifierDmId))) {
@@ -593,8 +594,8 @@ export async function createFsa(payload, actor) {
   }
 
   const sampleQuantity = Number(body.sampleQuantity)
-  if (!Number.isInteger(sampleQuantity) || sampleQuantity < 0) {
-    errors.sampleQuantity = 'Sample quantity harus bilangan bulat mulai dari 0'
+  if (!SAMPLE_QUANTITY_IDS.has(sampleQuantity)) {
+    errors.sampleQuantity = 'Sample quantity harus No Sample (0), 3 UoM, atau 10 UoM'
   }
 
   if (!(await userExists(body.verifierDmId))) {

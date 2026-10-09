@@ -136,7 +136,7 @@ function sampleFsa(overrides) {
     reasonId: 'new_material',
     reasonOther: '',
     dateOfSampleSubmission: '2026-01-15',
-    sampleQuantity: 5,
+    sampleQuantity: 3,
     approvalStatus: 'waiting_approval_spr',
     completedAt: null,
     verifierDmId: 'usr-role-spr',
@@ -233,7 +233,7 @@ export const SAMPLE_FSAS = [
       categoryId: 'connectors_cable_assemblies',
       reasonId: 'drawing_revision',
       dateOfSampleSubmission: '2026-03-20',
-      sampleQuantity: 8,
+      sampleQuantity: 3,
       approvalStatus: 'waiting_approval_production',
       checklist: { appearanceApprovalReport: 'approved', checkSheet: 'approved', millCertificate: 'under_review' },
       approvals: {

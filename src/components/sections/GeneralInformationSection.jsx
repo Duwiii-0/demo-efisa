@@ -9,6 +9,7 @@ function splitDescList(value) {
   if (!raw.trim()) return []
   return raw.split(',').map((s) => s.trim())
 }
+import { SAMPLE_QUANTITY_OPTIONS } from '../../lib/fsaForm.js'
 
 export default function GeneralInformationSection({ form, errors, reference, onChange, readOnly = false, hideCreatedAt = false }) {
   const { general } = form
@@ -323,7 +324,18 @@ export default function GeneralInformationSection({ form, errors, reference, onC
         </Field>
 
         <Field label="Sample Quantity" required error={errors.sampleQuantity}>
-          <Input type="number" min="0" step="1" value={general.sampleQuantity} onChange={setNumber('sampleQuantity')} placeholder="0" invalid={Boolean(errors.sampleQuantity)} disabled={disabled} />
+          {disabled && general.sampleQuantity !== '' && !SAMPLE_QUANTITY_OPTIONS.some((opt) => Number(opt.value) === Number(general.sampleQuantity)) ? (
+            <Input value={general.sampleQuantity} readOnly disabled />
+          ) : (
+            <Select value={general.sampleQuantity ?? ''} onChange={setNumber('sampleQuantity')} invalid={Boolean(errors.sampleQuantity)} disabled={disabled}>
+              <option value="">-- Pilih Sample Quantity --</option>
+              {SAMPLE_QUANTITY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </Select>
+          )}
         </Field>
 
         <Field label="Approval DM" required error={errors.verifierDm}>
