@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api.js'
 import { Alert, Button, Card, Spinner } from './ui.jsx'
-import { badgeClass, findName, formatDate, formatTime } from '../lib/format.js'
+import { badgeClass, findName, formatDate, formatTime, isOtherSupplier, supplierDisplayName } from '../lib/format.js'
 import { assignedActionableKeys } from '../lib/fsaForm.js'
 import { splitParts } from '../lib/validation.js'
 
@@ -71,7 +71,7 @@ function FsaTable({ items, reference, onOpenDetail, emptyText, onAct, busyId, so
                   </div>
                 </td>
                 <td className="max-w-xs truncate px-5 py-3 text-slate-600">{fsa.materialDescription}</td>
-                <td className="min-w-40 whitespace-nowrap px-5 py-3 text-slate-600">{findName(reference.suppliers, fsa.supplierId)}</td>
+                <td className={`min-w-40 whitespace-nowrap px-5 py-3 ${isOtherSupplier(fsa) ? 'font-medium text-orange-600' : 'text-slate-600'}`}>{supplierDisplayName(fsa, reference.suppliers)}</td>
                 <td className="px-5 py-3 text-center [&>span]:max-w-32 [&>span]:text-center [&>span]:whitespace-normal [&>span]:leading-tight">
                   <span className={badgeClass(fsa.approvalStatus)}>
                     {findName(reference.fsaStatuses, fsa.approvalStatus)}
@@ -194,7 +194,7 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, onFlash
           if (availabilityFilter === 'not_available' && !isNotAvailable) return false
         }
         if (keyword) {
-          const haystack = `${fsa.fsaNumber} ${fsa.partNumber} ${fsa.materialDescription} ${findName(reference.suppliers, fsa.supplierId)}`.toLowerCase()
+          const haystack = `${fsa.fsaNumber} ${fsa.partNumber} ${fsa.materialDescription} ${supplierDisplayName(fsa, reference.suppliers)}`.toLowerCase()
           if (!haystack.includes(keyword)) return false
         }
         return true

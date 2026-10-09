@@ -26,6 +26,7 @@ function buildFormFromFsa(fsa) {
       drawingRevision: fsa.drawingRevision ?? 0,
       sourcingVolume: fsa.sourcingVolume ?? '',
       supplierId: fsa.supplierId,
+      supplierOther: fsa.supplierOther ?? '',
       categoryId: fsa.categoryId,
       categoryOther: fsa.categoryOther ?? '',
       reasonId: fsa.reasonId,

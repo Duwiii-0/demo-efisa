@@ -25,6 +25,7 @@ create table if not exists public.fsas (
   drawing_revision int not null default 0,
   sourcing_volume int,
   supplier_id text not null,
+  supplier_other text not null default '',
   category_id text not null,
   category_other text not null default '',
   reason_id text not null,
@@ -82,6 +83,10 @@ create index if not exists custom_materials_created_idx on public.custom_materia
 insert into storage.buckets (id, name, public)
 values ('efisa-uploads', 'efisa-uploads', false)
 on conflict (id) do nothing;
+
+-- Migrasi untuk DB yang sudah ada sebelum kolom supplier_other ditambah:
+alter table public.fsas
+  add column if not exists supplier_other text not null default '';
 
 -- Migrasi nama: documents.appearance -> documents.productPhoto (hanya rename).
 update public.fsas

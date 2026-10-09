@@ -35,6 +35,8 @@ export function validateForm(form, users) {
   }
   if (!general.supplierId) {
     errors.supplierName = 'Supplier wajib dipilih'
+  } else if (general.supplierId === 'other' && String(general.supplierOther ?? '').trim().length < 3) {
+    errors.supplierOther = 'Nama supplier lainnya wajib diisi minimal 3 karakter'
   }
   if (!general.categoryId) {
     errors.category = 'Part category wajib dipilih'

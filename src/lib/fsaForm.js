@@ -149,6 +149,7 @@ export const emptyFsaForm = () => ({
     drawingRevision: 0,
     sourcingVolume: '',
     supplierId: '',
+    supplierOther: '',
     categoryId: '',
     categoryOther: '',
     reasonId: '',
