@@ -175,7 +175,7 @@ export default function FsaCreatePage({ reference, user, onCancel, onCreated }) 
           </div>
         </div>
 
-        <ol className="grid grid-cols-4 gap-3">
+        <ol className="mx-auto grid w-full max-w-4xl grid-cols-3 gap-3">
           {STEPS.map((step, index) => {
             const done = index < stepIndex
             const activeStep = index === stepIndex
