@@ -5,7 +5,13 @@ import { badgeClass, findName, formatDate, formatTime, isOtherSupplier, supplier
 import { assignedActionableKeys } from '../lib/fsaForm.js'
 import { splitParts } from '../lib/validation.js'
 
-function FsaTable({ items, reference, onOpenDetail, emptyText, onAct, busyId, sort, onToggleSort, showActions = true, draftActions }) {
+function partChipClass(status) {
+  if (status === 'master') return 'border-emerald-300 bg-emerald-100 text-emerald-800'
+  if (status == null) return 'border-slate-200 bg-slate-100 text-slate-400'
+  return 'border-amber-300 bg-amber-100 text-amber-800'
+}
+
+function FsaTable({ items, reference, onOpenDetail, emptyText, onAct, busyId, sort, onToggleSort, showActions = true, draftActions, materialMap = {} }) {
   const colCount = showActions || draftActions ? 7 : 6
 
   return (
@@ -23,7 +29,8 @@ function FsaTable({ items, reference, onOpenDetail, emptyText, onAct, busyId, so
               <th className="w-40 whitespace-nowrap px-5 py-3 font-semibold">Part Number</th>
               <th className="min-w-64 px-5 py-3 font-semibold">Material</th>
               <th className="min-w-40 whitespace-nowrap px-5 py-3 font-semibold">Supplier</th>
-              <th className="w-36 whitespace-nowrap px-5 py-3 text-center font-semibold">Status</th>              <th
+              <th className="w-36 whitespace-nowrap px-5 py-3 text-center font-semibold">Status</th>
+              <th
                 className="cursor-pointer select-none whitespace-nowrap px-5 py-3 text-center font-semibold hover:text-slate-700"
                 onClick={() => onToggleSort('createdAt')}
               >
@@ -64,7 +71,7 @@ function FsaTable({ items, reference, onOpenDetail, emptyText, onAct, busyId, so
                   </div>
                 </td>
                 <td className="max-w-xs truncate px-5 py-3 text-slate-600">{fsa.materialDescription}</td>
-                <td className={`min-w-40 whitespace-nowrap px-5 py-3 ${isOtherSupplier(fsa) ? 'font-medium text-orange-600' : 'text-slate-600'}`}>{supplierDisplayName(fsa, reference.suppliers)}</td>
+                <td className={`min-w-40 whitespace-nowrap px-5 py-3 ${isOtherSupplier(fsa) ? 'font-medium text-orange-600' : 'font-medium text-[#009999]'}`}>{supplierDisplayName(fsa, reference.suppliers)}</td>
                 <td className="px-5 py-3 text-center [&>span]:max-w-32 [&>span]:text-center [&>span]:whitespace-normal [&>span]:leading-tight">
                   <span className={badgeClass(fsa.approvalStatus)}>
                     {findName(reference.fsaStatuses, fsa.approvalStatus)}
@@ -391,6 +398,7 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, onFlash
           onAct={handleAction}
           busyId={busyId}
           sort={sort}
+          materialMap={materialMap}
           showActions={view === 'assigned'}
           draftActions={view === 'draft' ? { onEdit: (fsa) => onOpenDetail(fsa.id), onDelete: handleDeleteDraft } : undefined}
           onToggleSort={(field) =>
