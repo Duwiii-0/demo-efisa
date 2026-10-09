@@ -113,7 +113,8 @@ function AppRoutes() {
               onFlash={(message) => setFlash(message)}
               onOpenDetail={(id, options) => {
                 setFlash('')
-                navigate(options?.editable ? `/fsa/${id}?mode=edit` : `/fsa/${id}`)
+                if (options?.reworkEdit) navigate(`/fsa/${id}/edit`)
+                else navigate(options?.editable ? `/fsa/${id}?mode=edit` : `/fsa/${id}`)
               }}
             />
           }
@@ -129,7 +130,8 @@ function AppRoutes() {
               onFlash={(message) => setFlash(message)}
               onOpenDetail={(id, options) => {
                 setFlash('')
-                navigate(options?.editable ? `/fsa/${id}?mode=edit` : `/fsa/${id}`)
+                if (options?.reworkEdit) navigate(`/fsa/${id}/edit`)
+                else navigate(options?.editable ? `/fsa/${id}?mode=edit` : `/fsa/${id}`)
               }}
             />
           }

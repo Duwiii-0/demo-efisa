@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useParams, useSearchParams } from 'react-router-dom'
+import { useParams, useSearchParams, Navigate } from 'react-router-dom'
 import { api, downloadFile, getToken } from '../lib/api.js'
 import { Alert, Button, SectionCard, Spinner, Toast } from './ui.jsx'
 import GeneralInformationSection from './sections/GeneralInformationSection.jsx'
@@ -160,6 +160,17 @@ export default function FsaDetailPage({ reference, onBack, onEdit }) {
   }
   if (!fsa) {
     return <Spinner />
+  }
+
+  // Rework langsung bisa edit semua kaya draft: lempar ke halaman edit tanpa perlu tombol.
+  if (
+    onEdit &&
+    fsa.approvalStatus === 'rework_required' &&
+    (fsa.approvals?.procurement?.approverId
+      ? fsa.approvals?.procurement?.approverId === reference.me?.id
+      : reference.me?.role === 'procurement')
+  ) {
+    return <Navigate to={`/fsa/${fsa.id}/edit`} replace />
   }
 
   return (
