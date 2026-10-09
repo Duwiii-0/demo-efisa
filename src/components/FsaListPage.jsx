@@ -4,13 +4,7 @@ import { Alert, Button, Card, Spinner } from './ui.jsx'
 import { badgeClass, findName, formatDate, formatTime, isOtherSupplier, supplierDisplayName } from '../lib/format.js'
 import { assignedActionableKeys } from '../lib/fsaForm.js'
 
-function partChipClass(status) {
-  if (status === 'master') return 'border-emerald-300 bg-emerald-100 text-emerald-800'
-  if (status == null) return 'border-slate-200 bg-slate-100 text-slate-400'
-  return 'border-amber-300 bg-amber-100 text-amber-800'
-}
-
-function FsaTable({ items, reference, onOpenDetail, emptyText, onAct, busyId, sort, onToggleSort, showActions = true, draftActions, materialMap = {} }) {
+function FsaTable({ items, reference, onOpenDetail, emptyText, onAct, busyId, sort, onToggleSort, showActions = true, draftActions }) {
   const colCount = showActions || draftActions ? 7 : 6
 
   return (
@@ -344,7 +338,6 @@ export default function FsaListPage({ reference, onOpenDetail, onCreate, onFlash
           onAct={handleAction}
           busyId={busyId}
           sort={sort}
-          materialMap={materialMap}
           showActions={view === 'assigned'}
           draftActions={view === 'draft' ? { onEdit: (fsa) => onOpenDetail(fsa.id), onDelete: handleDeleteDraft } : undefined}
           onToggleSort={(field) =>
