@@ -61,6 +61,8 @@ function deriveSequentialStatus(approvals) {
 function repairFsaInPlace(fsa) {
   const changes = []
   if (!fsa.approvals) return changes
+  // File milik varian lain (mis. db.main.json dibuka kode v2): jangan utak-atik.
+  if (variant === 'main') return changes
   // Draft belum masuk alur approval: jangan di-repair / sinkronkan statusnya.
   if (fsa.approvalStatus === 'draft') return changes
 
